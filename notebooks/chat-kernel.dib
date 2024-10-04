@@ -1,0 +1,124 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"fsharp","items":[{"aliases":[],"languageName":"fsharp","name":"fsharp"},{"aliases":[],"languageName":"Prompt","name":"gpt-prompt"}]}}
+
+#!csharp
+
+/*
+// Copyright (c) .NET Foundation and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using Microsoft.DotNet.Interactive.Commands;
+using Microsoft.DotNet.Interactive.Directives;
+using Microsoft.DotNet.Interactive.Events;
+
+namespace Microsoft.DotNet.Interactive.Mermaid;
+
+public class MermaidKernel : Kernel,
+                             IKernelCommandHandler<SubmitCode>
+{
+    public MermaidKernel() : base("mermaid")
+    {
+        KernelInfo.LanguageName = "Mermaid";
+        KernelInfo.Description = """
+                                 This Kernel uses the Mermaid library to render diagrams. 
+                                 
+                                 For more information about Mermaid, see https://mermaid.js.org/intro.
+                                 """;
+    }
+
+    Task IKernelCommandHandler<SubmitCode>.HandleAsync(
+        SubmitCode command,
+        KernelInvocationContext context)
+    {
+        command.Parameters.TryGetValue("--display-width", out var width);
+        command.Parameters.TryGetValue("--display-height", out var height);
+        command.Parameters.TryGetValue("--display-background-color", out var background);
+
+        var markdown = new MermaidMarkdown(command.Code)
+        {
+            Width = width ?? string.Empty,
+            Height = height ?? string.Empty,
+            Background = string.IsNullOrWhiteSpace(background) ? "white" : background
+        };
+
+        var formattedValues = FormattedValue.CreateManyFromObject(markdown);
+
+        context.Publish(
+            new DisplayedValueProduced(
+                markdown,
+                command,
+                formattedValues));
+
+        return Task.CompletedTask;
+    }
+
+    public override KernelSpecifierDirective KernelSpecifierDirective
+    {
+        get
+        {
+            var directive = base.KernelSpecifierDirective;
+
+            directive.Parameters.Add(new(
+                                         "--display-width",
+                                         description: "Specify width for the display."));
+
+            directive.Parameters.Add(new(
+                                         "--display-height",
+                                         description: "Specify height for the display."));
+
+            directive.Parameters.Add(new(
+                                         "--display-background-color",
+                                         description: "Specify background color for the display."));
+
+            return directive;
+        }
+    }
+}
+*/
+
+#!fsharp
+
+open System.Threading.Tasks
+open Microsoft.DotNet.Interactive
+open Microsoft.DotNet.Interactive.Commands
+open Microsoft.DotNet.Interactive.Connection
+//open Microsoft.DotNet.Interactive.Directives
+open Microsoft.DotNet.Interactive.Events
+
+
+type ChatKernel(?client: KernelClientBase) as this =
+    inherit Kernel("gpt-prompt")
+    do
+        this.KernelInfo.LanguageName <- "Prompt"
+        this.KernelInfo.Description <- "This kernel uses the AI GPT API to generate text based on the prompt provided."
+        //this.AddMiddleware(middleware, caller)
+
+    interface IKernelCommandHandler<SubmitCode> with
+        member this.HandleAsync(command:SubmitCode, context:KernelInvocationContext) =
+            let prompt = command.Code
+            let response = "This is a response to the prompt: " + prompt
+            //printfn "GPT: %s" response
+            context.Display("Handling DSL code: " + command.Code) |> ignore
+
+            //let formattedValues = FormattedValue.Create(response, "text/plain")
+            //context.Publish(DisplayedValueProduced(response, command, formattedValues))
+            Task.CompletedTask
+
+    //override this.KernelSpecifierDirective with get () =
+    //    let directive = base.KernelSpecifierDirective
+    //    directive
+
+
+//let chatKernel = new ChatKernel()
+
+//open Microsoft.DotNet.Interactive.Server
+
+let compositeKernel = new CompositeKernel()
+compositeKernel.Add(new ChatKernel())
+compositeKernel.DefaultKernelName <- "gpt-prompt"
+let server = new KernelServer(compositeKernel)
+
+#!gpt-prompt
+
+testme 

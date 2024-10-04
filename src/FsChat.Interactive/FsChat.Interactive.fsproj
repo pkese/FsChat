@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageDescription>FsChat support for dotnet-interactive</PackageDescription>
+    <PackageTags>polyglot notebook dotnet interactive FsChat GPT AI</PackageTags>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn><!-- dll outside of lib/ folder -->
+    <Version>0.0.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="extension.dib" Pack="true" PackagePath="interactive-extensions/dotnet" />
+    <None Include="js-kernel/dist/main.js" Pack="true" PackagePath=""/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- same as above but copy to output directory -->
+    <None Include="extension.dib" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="js-kernel/dist/main.js" CopyToOutputDirectory="PreserveNewest" Link="main.js" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Compile Include="Library.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FsChat\FsChat.fsproj" />
+  </ItemGroup>
+
+
+
+</Project>

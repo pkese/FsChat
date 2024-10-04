@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+    <script type="module" src="src/main.js"></script>
+</head>
+<body>
+    <h1>Test</h1>
+
+
+<div class="markdown"><pre>
+# Some mermaid
+```mermaid
+graph TD
+    SE[Sweden]
+    UA[Ukraine]
+    IT[Italy]
+    NL[Netherlands]
+    IL[Israel]
+    PT[Portugal]
+    AT[Austria]
+    DK[Denmark]
+    NA[N/A: Cancelled due to COVID-19]
+
+    DK -->|2014| AT
+    AT -->|2015| SE
+    SE -->|2016| UA
+    UA -->|2017| PT
+    PT -->|2018| IL
+    IL -->|2019| NL
+    NL -->|2020| NA
+    NA -->|2021| IT
+    IT -->|2022| UA
+    UA -->|2023| SE
+```
+</pre></div>
+
+<hr/>
+
+<div class="markdown"><pre>
+# Sample Markdown Document
+
+This is a sample document to demonstrate Markdown syntax.
+
+## Table Example
+
+Here's a simple table:
+
+| Name   | Age | City       |
+|--------|-----|------------|
+| Alice  | 30  | New York   |
+| Bob    | 25  | San Francisco |
+| Charlie| 35  | Los Angeles |
+
+## Code Example
+
+Below is a minimal code sample in Python:
+</pre></div>
+
+    <hr/>
+
+    <div class="markdown"><pre>
+# Sample Markdown Document
+
+This is a sample document to demonstrate Markdown syntax.
+
+## Table Example
+
+Here's a simple table:
+
+| Name   | Age | City       |
+|--------|-----|------------|
+| Alice  | 30  | New York   |
+| Bob    | 25  | San Francisco |
+| Charlie| 35  | Los Angeles |
+
+## Code Example
+
+Below is a minimal code sample in Python:
+
+```python
+def greet(name):
+    print(f"Hello, {name}!")
+
+greet("World")
+```
+</pre></div>
+
+<script type='module'>window.markdownAll()</script>
+</body>
+</html>
