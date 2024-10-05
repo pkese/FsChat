@@ -63,7 +63,7 @@ window.markdownAll = () => {
 window.appendChunk = async (id, newText) => {
     let el = document.getElementById(id);
     // extract current text from data
-    let text = el.getAttribute('data-text') || "";
+    let text = el.getAttribute('data-text') || '';
     text = text + newText;
     el.setAttribute('data-text', text);
 

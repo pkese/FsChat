@@ -10,12 +10,13 @@ open Microsoft.DotNet.Interactive
 open Microsoft.DotNet.Interactive.Commands
 open Microsoft.DotNet.Interactive.Formatting
 
-type Markdown(text:string) =
+type Markdown(text:string, ?htmlProps:string) =
+    member val props = htmlProps |> Option.defaultValue ""
     member val text = text with get
     /// Formatter for ChatResponse what collapses the details tag
     static member formatter =
         Action<_,_>(fun (m:Markdown) (writer:TextWriter) ->
-            $"<div class='markdown'><pre>\n{m.text}\n</pre></div>\n<script type='module'>window.markdownAll()</script>"
+            $"<div class='markdown' {m.props}><pre>\n{m.text}\n</pre></div>\n<script type='module'>window.markdownAll()</script>"
             |> writer.Write)
 
 Formatter.Register<Markdown>(Markdown.formatter, "text/html")
@@ -60,7 +61,7 @@ open Gpt.Types
 open Gpt.Api
 open FsChat
 
-module NotebookRenderer =
+type NotebookRenderer(?style: string) =
 
     let tagIdGenerator =
         let mutable tagId = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1727989007L
@@ -78,53 +79,57 @@ module NotebookRenderer =
         | Err _ -> true
         | _ -> false
 
+    interface IChatRenderer with
+        member _.Create() =
+            let htmlTagId = $"gptresp{tagIdGenerator()}"
+            let props =
+                match style with
+                | None -> ""
+                | Some style -> $"style='{style}'"
+            let display = $"<div class='chat-response' id='{htmlTagId}' {props}/>".DisplayAs("text/html")
 
-    let create () =
-        let htmlTagId = $"gptresp{tagIdGenerator()}"
-        let display = $"<div class='chat-response' id='{htmlTagId}'/>".DisplayAs("text/html")
+            let mutable lastTask = Task.Delay(TimeSpan.FromMilliseconds 250.0)
+            let fullText = Text.StringBuilder()
+            let mutable pendingTexts = ResizeArray<string>()
 
-        let mutable lastTask = Task.Delay(TimeSpan.FromMilliseconds 250.0)
-        let fullText = Text.StringBuilder()
-        let mutable pendingTexts = ResizeArray<string>()
-
-        let appendIncremental (stdout:string) =
-            if lastTask.IsCompleted then
-                let stdout =
-                    if pendingTexts.Count = 0 then stdout
-                    else
+            let appendIncremental (stdout:string) =
+                if lastTask.IsCompleted then
+                    let stdout =
+                        if pendingTexts.Count = 0 then stdout
+                        else
+                        pendingTexts.Add(stdout)
+                        pendingTexts |> String.concat "" |> fun p -> p + stdout
+                    pendingTexts.Clear()
+                    lastTask <- domAppendAsync htmlTagId stdout
+                else
                     pendingTexts.Add(stdout)
-                    pendingTexts |> String.concat "" |> fun p -> p + stdout
-                pendingTexts.Clear()
-                lastTask <- domAppendAsync htmlTagId stdout
-            else
-                pendingTexts.Add(stdout)
-                lastTask <- task {
+                    lastTask <- task {
+                        do! lastTask
+                        match pendingTexts.Count with
+                        | 0 ->
+                            return! Task.CompletedTask
+                        | text ->
+                            let text = pendingTexts |> String.concat ""
+                            pendingTexts.Clear()
+                            return! domAppendAsync htmlTagId text
+                    }
+
+            let renderFinal () =
+                task {
                     do! lastTask
-                    match pendingTexts.Count with
-                    | 0 ->
-                        return! Task.CompletedTask
-                    | text ->
-                        let text = pendingTexts |> String.concat ""
-                        pendingTexts.Clear()
-                        return! domAppendAsync htmlTagId text
-                }
+                    display.Update(Markdown(fullText.ToString(), props))
+                } |> ignore
 
-        let renderFinal () =
-            task {
-                do! lastTask
-                display.Update(Markdown(fullText.ToString()))
-            } |> ignore
-
-        fun (chunk:GptChunk) ->
-            let stdout = formatChunk chunk
-            fullText.Append(stdout) |> ignore
-            if isComplete chunk then
-                renderFinal()
-            else
-                appendIncremental stdout
+            fun (chunk:GptChunk) ->
+                let stdout = formatChunk chunk
+                fullText.Append(stdout) |> ignore
+                if isComplete chunk then
+                    renderFinal()
+                else
+                    appendIncremental stdout
 
 
-Chat.defaultRenderer <- NotebookRenderer.create
+Chat.defaultRenderer <- NotebookRenderer()
 
 type ChatResponse with
     /// Formatter for ChatResponse what collapses the details tag

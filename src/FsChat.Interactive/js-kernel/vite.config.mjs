@@ -20,11 +20,19 @@ export default defineConfig({
       plugins: [
         resolve(), // tells Rollup how to find node_modules
         commonjs(), // converts CommonJS modules to ES6
-        //terser(), // minify the bundle
+        terser({
+          output: {
+            ecma: 6,
+            quote_style: 1, // use default quotes (0=double, 1=single, 2=auto, 3=keep original)
+          }
+        }), // minify the bundle
       ],
       treeshake: {
         moduleSideEffects: false // Ensure no side effects are included
       }
     }
   },
+  output: {
+    generatedCode: "es2020",
+  }
 });

@@ -10,7 +10,7 @@ const renderTimeout = (ms) => {
 export default async function injectMermaid(md, {mermaid, ...options}) {
     //console.log('Mermaid', mermaid);
     // Setup Mermaid
-    mermaid.initialize({ securityLevel: "loose", ...options });
+    mermaid.initialize({ securityLevel: 'loose', ...options });
     function getLangName(info) {
         return info.split(/\s+/g)[0];
     }
@@ -24,14 +24,14 @@ export default async function injectMermaid(md, {mermaid, ...options}) {
         let token = tokens[idx];
         let info = token.info.trim();
         let langName = info ? getLangName(info) : "";
-        if (["mermaid", "{mermaid}"].indexOf(langName) === -1) {
+        if (['mermaid', '{mermaid}'].indexOf(langName) === -1) {
             if (defaultFenceRenderer !== undefined) {
                 return defaultFenceRenderer(tokens, idx, options, env, slf);
             }
             // Missing fence renderer!
             return "";
         }
-        let offscreen = document.createElement("div");
+        let offscreen = document.createElement('div');
         offscreen.id = `mermaid-${idCounter++}`;
         document.body.appendChild(offscreen);
         offscreen.style.display = "none";

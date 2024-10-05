@@ -11,9 +11,12 @@ open FSharp.Control
 open Gpt.Types
 open Gpt.Api
 
-type ChunkRenderer = unit -> GptChunk -> unit
+type IChatRenderer =
+    abstract member Create: unit -> (GptChunk -> unit)
 
-module ChunkRenderer = 
+//type ChunkRenderer = unit -> GptChunk -> unit
+
+type ChunkRenderer() =
 
     let formatChunk = function
         | Role role -> sprintf "\nRole: %s\n" role
@@ -22,9 +25,11 @@ module ChunkRenderer =
         | Finished (reason, stats) -> sprintf "\n\nFinished in %.2fs: `%A` @ %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
         | Err err -> sprintf "\nError: %s\n" err
 
-    let stdoutRenderer : ChunkRenderer =
-        fun () ->
-            formatChunk >> Console.Out.Write
+    interface IChatRenderer with
+        member this.Create() =
+            fun chunk ->
+                formatChunk chunk
+                |> Console.Out.Write
 
 type ChatResponse = {
     role: string option
@@ -33,16 +38,16 @@ type ChatResponse = {
 }
 
 module Chat =
-    let mutable defaultRenderer = ChunkRenderer.stdoutRenderer
+    let mutable defaultRenderer : IChatRenderer = ChunkRenderer()
 
-type Chat(?model:GptModel, ?chunkRenderer:ChunkRenderer) =
+type Chat(?model:GptModel, ?chunkRenderer:IChatRenderer) =
 
     let mutable ctx : Gpt.Types.Prompt list = []
     let mutable gptModel = model |> Option.orElseWith (fun () -> Some Gpt4o_mini)
-    let chunkRenderer = defaultArg chunkRenderer Chat.defaultRenderer
+    let chunkRenderer : IChatRenderer = defaultArg chunkRenderer Chat.defaultRenderer
 
     let fetchGpt(prompts) =
-        let render = chunkRenderer()
+        let render = chunkRenderer.Create()
         taskSeq {
             let chunks = fetchStreaming (prompts |> Seq.map Prompt.toMsg, gptModel)
             let text = StringBuilder()
@@ -70,7 +75,7 @@ type Chat(?model:GptModel, ?chunkRenderer:ChunkRenderer) =
             | [r] ->
                 //printfn "Result: %A" r.result
                 match r.result with
-                | Ok _ -> ctx <- prompts @ [ Assistant r.text ]
+                | Ok _ -> ctx <- (prompts @ [ Assistant r.text ])
                 | Error err -> ()
                 return r
             | results -> return { role = None; text = ""; result = Error $"Expected a single result, got %d{results.Length}: %A{results}" }
@@ -84,13 +89,14 @@ type Chat(?model:GptModel, ?chunkRenderer:ChunkRenderer) =
         | ex -> { role = None; text = ""; result = Error (ex.ToString()) }
 
     member this.send(text:string) =
-        fetch <| ctx @ [User text]
+        fetch (ctx @ [User text])
     member this.send(prompts: Gpt.Types.Prompt list) =
-        fetch <| ctx @ prompts
+        fetch (ctx @ prompts)
 
     member this.clear() = ctx <- []
 
-    member this.context with get() = ctx and set(c) = ctx <- c
+    member this.context with get() = ctx
+    member this.setContext(c) = ctx <- c
     member this.deleteLastInteracton() =
         let rec loop = function
             | [] -> []
