@@ -24,7 +24,7 @@
   <ItemGroup>
     <Compile Include="FsChat.Types.fsx" />
     <Compile Include="FsChat.AiApi.fsx" />
-    <Compile Include="FsChat.Chat.fsx" />
+    <Compile Include="FsChat.fsx" />
   </ItemGroup>
 
   <ItemGroup>

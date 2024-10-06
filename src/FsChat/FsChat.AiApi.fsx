@@ -58,6 +58,8 @@ let gptModel = function
     | Gpt4o_mini -> { tokens = 131072; api = OpenAI; model = "gpt-4o-mini" }
     | Gpt4T ->      { tokens = 131072; api = OpenAI; model = "gpt-4-turbo" }
     | Gpt35T ->     { tokens =  16385; api = OpenAI; model = "gpt-3.5-turbo" }
+    | O1_preview -> { tokens = 128000; api = OpenAI; model = "o1-preview" }
+    | O1_mini ->    { tokens = 128000; api = OpenAI; model = "o1-mini" }
     // Groq
     //| LLama31_405b -> { tokens =  131072; api = Groq; model = "llama-3.1-405b-reasoning" }
     | LLama31_70b -> { tokens =  131072; api = Groq; model = "llama-3.1-70b-versatile" }

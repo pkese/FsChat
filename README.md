@@ -204,8 +204,8 @@ As you can see, `css` should contain HTML code, e.g.
 #### Example
 ```fsharp
 let greenHeaderRenderer = NotebookRenderer(
-    props="class='my-class'",
-    css="<style>.my-class th { color: #080; }</style>"
+    props = "class='my-class'",
+    css = "<style>.my-class th { color: #080; }</style>"
 )
 let chat = Chat(Gpt4o, renderer=greenHeaderRenderer)
 ```
@@ -217,9 +217,9 @@ See [dialog.ipynb](docs/dialog.ipynb) for sample code.
 
 ### Rendered content does not show when opening .ipynb files
 
-Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code sometimes won't load content.  
-Notebooks files when opened may (or will?) lose (or delete) rendered content.  
-*(Can someone test if Visual Studio behaves any better?)*
+Dotnet.Interactive (Polyglot) notebooks inside *Visual Studio Code* sometimes won't load content.  
+Notebook files when opened may (or will?) lose (or delete) rendered content.  
+*(Can someone test if Visual Studio on Windows behaves any better?)*
 
 ### All new cells are C# by default
 
@@ -229,7 +229,6 @@ You need to open your .ipynb, scroll all the way down and set:
 "polyglot_notebook": {
    "kernelInfo": {
     "defaultKernelName": "fsharp",
-    ...
    }
 }
 ```
@@ -240,7 +239,7 @@ You need to open your .ipynb, scroll all the way down and set:
 
 Note: this is very early release, there will be API changes in the future.
 
-For developing and modifying this library outside of Dotnet Interactive (Polyglot) notebooks, look at [./src/FsChat/test.fsx](./src/FsChat/test.fsx).
+For developing and modifying this library outside of Dotnet Interactive (Polyglot) notebooks, look at [example.fsx](./example.fsx).
 
 For fiddling with Dotnet Interactive (Polyglot) notebooks:  
 > Todo:  

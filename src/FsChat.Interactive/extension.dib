@@ -68,7 +68,7 @@ module NotebookRenderer =
     open FSharp.Control
     open FsChat.Types
     //open FsChat.AiApi
-    open FsChat.Chat
+    open FsChat
 
     /// <summary>An IChatRenderer that formats chat response into html and renders it into a notebook cell.</summary>
     /// <param name="props">Additional html properties to add to target div element, e.g. `"id='myid' class='myclass otherclass'"`</param>

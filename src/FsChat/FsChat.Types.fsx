@@ -19,6 +19,8 @@ type GptModel =
     | Gpt4T
     | Gpt4o
     | Gpt4o_mini
+    | O1_preview
+    | O1_mini
     | LLama31_405b
     | LLama31_70b
     | LLama31_8b
@@ -26,7 +28,7 @@ type GptModel =
     | Qwen2_72b_instr
 with
     static member all = [
-        LLama31_405b; LLama31_70b; LLama31_8b; LLama3_70b; Gpt4o; Gpt4o_mini; Gpt4T; Gpt4; Gpt35T
+        LLama31_405b; LLama31_70b; LLama31_8b; LLama3_70b; Gpt4o; Gpt4o_mini; O1_preview; O1_mini; Gpt4T; Gpt4; Gpt35T
         Qwen2_72b_instr
     ]
     /// given gpt string name, return the matching model
@@ -36,6 +38,8 @@ with
         | "gpt-4-turbo" -> Some Gpt4T
         | "gpt-4o" -> Some Gpt4o
         | "gpt-4o-mini" -> Some Gpt4o_mini
+        | "o1-preview" -> Some O1_preview
+        | "o1-mini" -> Some O1_mini
         // TogetherAI
         | "meta-llama/Llama-3-70b-chat-hf" -> Some LLama3_70b
         | "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" -> Some LLama31_70b

@@ -1,8 +1,7 @@
 #if INTERACTIVE
 #load "FsChat.AiApi.fsx"
 #else
-[<AutoOpen>]
-module FsChat.Chat
+namespace FsChat
 #endif
 
 open System
