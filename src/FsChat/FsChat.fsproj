@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.0.1</Version>
+    <Version>0.1.0-beta1</Version>
     <IsPackable>true</IsPackable>
     <PackageId>FsChat</PackageId>
     <Authors>Peter Kese</Authors>
@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="FsChat.Types.fs" />
+    <Compile Include="FsChat.Types.fsx" />
     <Compile Include="FsChat.AiApi.fsx" />
     <Compile Include="FsChat.Chat.fsx" />
   </ItemGroup>

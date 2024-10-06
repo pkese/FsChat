@@ -1,11 +1,11 @@
 
 
-# FsChat
+# FsChat <small>... is yet another GPT client API library</small>
 
-Yet another GPT API client library.
-
-**FsChat** focuses on interactivity: 
-It shows you real time straming responses as they arrive and renders Markdown and Mermaid diagrams.
+However **FsChat** focuses on interactivity and usability:
+- it shows straming responses in real time as they arrive,
+- it can render Markdown and Mermaid diagrams for you,
+- it makes it easy to interact with GPT agents programmatically.
 
 ## Usage: 1,2,3,4
 
@@ -27,7 +27,7 @@ LEPTON_API_KEY=...
 
 
 ```fsharp
-#r "nuget: FsChat.Interactive, 0.0.1"
+#r "nuget: FsChat.Interactive, 0.1.0-beta1"
 #r "nuget: dotenv.net, 3.2.0"
 open dotenv.net
 DotEnv.Load(DotEnvOptions(envFilePaths=[ ".env" ]))
@@ -113,7 +113,7 @@ or it can be overwritten with `chat.setContext` method.
 Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last `User` prompt plus GPT's response) with `chat.undo()`.
 
 
-### Multiple agents example
+### Multi-agent example
 Here's an example of instatiating two agents and playing a 20 questions game betweeen them.
 
 ```fsharp
@@ -154,9 +154,10 @@ play 20 "I have a word! Which word is it? Ask the first question."
 
 ![fschat-dialog](https://github.com/user-attachments/assets/b5f6f9e8-bf75-4ea8-9d3f-74addfca4331)
 
-The above animation contains some fancy HTML/CSS formatting. Look at example [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below (note: unfortunately, GitHub's *.ipynb* renderer won't show colored bubbles: they are there but GitHub doesn't show them).
+The above animation contains some fancy HTML/CSS formatting. Look at example [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below.  
+Note: *unfortunately, GitHub's .ipynb renderer won't show colored bubbles: they are there but GitHub doesn't show them.*
 
-## Choosing what kind of live output do you want to see
+## Choosing what kind of output do you want to see
 
 There is an interface called `IChatRenderer` with three implementations:
 - `StdoutRenderer()` is the default for **FsChat** and renders live outputs to console.
@@ -181,7 +182,7 @@ Chat.defaultRenderer <- StdoutRenderer()
 
 ### Customizing the NotebookRenderer
 
-NotebookRenderer accepts a few optional parameters:
+NotebookRenderer accepts two optional parameters:
 - `props` a string with HTML tag attributes that will be added to the output div element,
 - `css` a string containing CSS stylesheet that will be injected into html.
 
@@ -212,21 +213,50 @@ let chat = Chat(Gpt4o, renderer=greenHeaderRenderer)
 
 See [dialog.ipynb](docs/dialog.ipynb) for sample code.
 
+# Problems & Caveats
 
-# Problems
+### Rendered content does not show when opening .ipynb files
 
-Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code don't load rendered content correctly:  
-notebooks files when opened may (or will?) lose (or delete) rendered content.
+Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code sometimes won't load content.  
+Notebooks files when opened may (or will?) lose (or delete) rendered content.  
+*(Can someone test if Visual Studio behaves any better?)*
 
-(Can someone test if full Visual Studio behaves any better?)
+### All new cells are C# by default
+
+Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code can occasionally change notebook's default language to C#.  
+You need to open your .ipynb, scroll all the way down and set:
+```json
+"polyglot_notebook": {
+   "kernelInfo": {
+    "defaultKernelName": "fsharp",
+    ...
+   }
+}
+```
+
+
+
+# Development
+
+Note: this is very early release, there will be API changes in the future.
+
+For developing and modifying this library outside of Dotnet Interactive (Polyglot) notebooks, look at [./src/FsChat/test.fsx](./src/FsChat/test.fsx).
+
+For fiddling with Dotnet Interactive (Polyglot) notebooks:  
+> Todo:  
+> Figure out how to [checkout the code](https://github.com/pkese/FsChat) and
+`#load "src/FsChat/FsChat.Chat.fsx"`
+into the notebook context.  
+> Currently the FsChat from Nuget gets registered as default FsChat library and Chat class.
 
 
 # TODO
-- [ ] improve GptModel configuration
+- [ ] improve GptModel configuration (-beta2)
   - [ ] simplify customization
 - [x] record examples
 - [x] add README
 - [ ] extract code snippets from markdown frames
+- [ ] expose prompt API as F# computation expression
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
 - [ ] add API token limit
@@ -234,6 +264,8 @@ notebooks files when opened may (or will?) lose (or delete) rendered content.
 - [ ] parse jsons
 - [ ] render json schemas
 - [ ] add `prompt` notebook kernel
+- [ ] Add C# support
+- [ ] Write tests
 
 
 

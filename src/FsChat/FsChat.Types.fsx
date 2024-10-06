@@ -1,5 +1,9 @@
+#if INTERACTIVE
+// nothing
+#else
 [<AutoOpen>]
 module FsChat.Types
+#endif
 
 open System
 

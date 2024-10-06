@@ -1,12 +1,12 @@
 #!/usr/bin/env -S dotnet fsi --langversion:preview
 
 #r "nuget: dotenv.net, 3.2.0"
-#load "Gpt.Api.fsx"
+#load "FsChat.AiApi.fsx"
 
 open System
 open FSharp.Control
-open Gpt.Api
-open Gpt.Types
+open FsChat.AiApi
+open FsChat.Types
 open dotenv.net
 
 do // load .env file

@@ -1,7 +1,7 @@
 #if INTERACTIVE
 #r "nuget: FSharp.SystemTextJson, 1.3.13"
 #r "nuget: FSharp.Control.TaskSeq"
-#load "FsChat.Types.fs"
+#load "FsChat.Types.fsx"
 #else
 module FsChat.AiApi
 #endif
