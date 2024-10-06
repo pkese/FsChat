@@ -83,7 +83,7 @@ chat.send """
     if a country won the competition multiple times, then the country's node should have multiple incoming and outgoing edges.
 """
 ````
-Rule of thumb: you'll get better results, if you give it an example of chart code structure.
+Hint: you'll get better results, if you prompt it with an example of chart code structure.
 ![fschat-chart](https://github.com/user-attachments/assets/0ba9a21d-1694-4299-a99b-9e36d9aa2498)
 
 ## Agent interaction
@@ -94,9 +94,9 @@ The result of each call to `chat.send` is a `Response` record with:
 
 
 ### Context 
-Each chat has a `chat.context` whis is a history of interactions with the GPT:
+Each chat agent has a `chat.context` which is a history of interactions with the GPT:
 ```fsharp
-chat.context = [
+chat.context -> [
     System    "You're a helpful assistant"
     User      "Say a random number"
     Assistant "Sure! How about 42?"
@@ -107,14 +107,14 @@ chat.context = [
 ```
 Each time you `chat.send` a prompt, both the prompt and GPT's response are added to context.
 
-Context can be accessed using the `chat.context` property (it returns a list of previous interactions like the code above)
-or it can be overwritten with `chat.setContext` method.
+Context can be accessed using the `chat.context` property (it returns a list of previous interactions like the example above)
+and it can be overwritten with `chat.setContext` method.
 
 Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last `User` prompt plus GPT's response) with `chat.undo()`.
 
 
 ### Multi-agent example
-Here's an example of instatiating two agents and playing a 20 questions game betweeen them.
+Below is an example of instatiating two agents and playing a 20 questions game betweeen them.
 
 ```fsharp
 let agent1 = Chat(model=Gpt4o_mini, context=[
@@ -154,7 +154,7 @@ play 20 "I have a word! Which word is it? Ask the first question."
 
 ![fschat-dialog](https://github.com/user-attachments/assets/b5f6f9e8-bf75-4ea8-9d3f-74addfca4331)
 
-The above animation contains some fancy HTML/CSS formatting. Look at example [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below.  
+The above animation contains some fancy HTML/CSS formatting. Look at [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below.  
 Note: *unfortunately, GitHub's .ipynb renderer won't show colored bubbles: they are there but GitHub doesn't show them.*
 
 ## Choosing what kind of output do you want to see
@@ -162,21 +162,21 @@ Note: *unfortunately, GitHub's .ipynb renderer won't show colored bubbles: they 
 There is an interface called `IChatRenderer` with three implementations:
 - `StdoutRenderer()` is the default for **FsChat** and renders live outputs to console.
 - `NotebookRenderer()` is the default for **FsChat.Interactive** and renders live outputs as HTML to Dotnet Interactive (Polyglot) notebooks.
-- `NoRenderer()` is a dummy renderer that doesn't output anything (choose this if you're writing apps).
+- `NoRenderer()` is a dummy renderer that doesn't output anything. Choose this if you're writing non-interactive apps.
 
 There are multiple ways of specifying a renderer:
 ```fsharp
 // passing it as a parameter to Chat constructor
 let chat = Chat(Gpt4o_mini, renderer=StdoutRenderer())
 
-// setting it as a property of a Chat instance
+// setting it on an existing Chat instance
 chat.setRenderer(StdoutRenderer())
 
-// or setting it globally
-// If set globally, all new Chat instances will use this renderer.
+// or setting it globally.
+// This will cause all new Chat instances to use this renderer by default.
 Chat.defaultRenderer <- StdoutRenderer()
 
-// `#r FsChat.Interactive` sets it to NotebookRenderer() by default
+// note: `#r FsChat.Interactive` sets it to NotebookRenderer()
 // otherwise it defaults to StdoutRenderer().
 ```
 
@@ -186,7 +186,7 @@ NotebookRenderer accepts two optional parameters:
 - `props` a string with HTML tag attributes that will be added to the output div element,
 - `css` a string containing CSS stylesheet that will be injected into html.
 
-As a rule of thumb, think of `props` and `css` being inserted into HTML as follows:
+Behind the scenes `props` and `css` get inserted into HTML as follows:
 ```html
 <div class='chat-response'>
     {{css}}
@@ -195,7 +195,7 @@ As a rule of thumb, think of `props` and `css` being inserted into HTML as follo
     </div>
 </div>
 ```
-As you can see, `css` should contain HTML code, e.g.
+As you can see, `css` should contain full HTML tags, e.g.
 - `<style>...</style>` tag, or
 - `<link rel='stylesheet' href='...'>`.
 
@@ -217,14 +217,14 @@ See [dialog.ipynb](docs/dialog.ipynb) for sample code.
 
 ### Rendered content does not show when opening .ipynb files
 
-Dotnet.Interactive (Polyglot) notebooks inside *Visual Studio Code* sometimes won't load content.  
+Dotnet.Interactive (Polyglot) notebooks inside **Visual Studio Code** sometimes won't load content.  
 Notebook files when opened may (or will?) lose (or delete) rendered content.  
-*(Can someone test if Visual Studio on Windows behaves any better?)*
+*(Can someone test if full-blown Visual Studio on Windows behaves any better?)*
 
-### All new cells are C# by default
+### All new cells are created as C# by default
 
 Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code can occasionally change notebook's default language to C#.  
-You need to open your .ipynb, scroll all the way down and set:
+You need to open your .ipynb file with a text editor, scroll all the way down and set:
 ```json
 "polyglot_notebook": {
    "kernelInfo": {
@@ -237,7 +237,8 @@ You need to open your .ipynb, scroll all the way down and set:
 
 # Development
 
-Note: this is very early release, there will be API changes in the future.
+Note: this an early beta release, there will be API changes in the future,
+particularly in the naming and specifying GptModels.
 
 For developing and modifying this library outside of Dotnet Interactive (Polyglot) notebooks, look at [example.fsx](./example.fsx).
 
