@@ -9,9 +9,10 @@ It shows you real time straming responses as they arrive and renders Markdown an
 
 ## Usage: 1,2,3,4
 
-1) Register for an account and get an API key with OpenAI, TogetherAI, Groq or LeptonAI.
+1) Register for an account with [OpenAI](https://platform.openai.com/settings/profile?tab=api-keys), [TogetherAI](https://api.together.xyz/settings/api-keys), [Groq](https://console.groq.com/keys) or [LeptonAI](https://dashboard.lepton.ai/)  
+   to get an API key.
 
-3) Write your key it in `.env` file.
+2) Write your API key it in `.env` file.
 
 ```bash
 # example .env file
@@ -21,8 +22,8 @@ GROQ_API_KEY=...
 LEPTON_API_KEY=...
 ```
 3) Load **FsChat**:  
-- if you're writing a command line **.fsx** script or a normal **.fsproj** project, then load `FsChat`,
-- if you're using Dotnet Interactive (Polyglot) notebooks, then load `FsChat.Interactive` package.    
+- if you're writing a command line **.fsx** script or a normal **.fsproj** project, then reference `FsChat` package,
+- if you're using Dotnet Interactive (Polyglot) notebooks, then reference `FsChat.Interactive` package.    
 
 
 ```fsharp
@@ -52,8 +53,7 @@ chat.send [
     """
 ]
 ```
-If you've loaded FsChat.Interactive into a Dotnet Interactive (Polyglot) notebook session,
-then you will see live Markdown text previews:
+If you have loaded **FsChat.Interactive** into a Dotnet Interactive (Polyglot) notebook session, then you should see live Markdown text previews:
 
 ![fschat-table](https://github.com/user-attachments/assets/773eb721-0d6f-4026-b2b6-15be9c743a78)
 
@@ -61,7 +61,7 @@ then you will see live Markdown text previews:
 
 ### Mermaid charts
 
-You can also ask it to render the above table as a Mermaid chart:
+You can also ask GPT to render the above table as a Mermaid chart:
 ````fsharp
 chat.model <- Gpt4o // switch to a more powerful model for this task; Gpt4_mini is not very good at rendering charts
 chat.send """
@@ -102,14 +102,15 @@ chat.context = [
     Assistant "Sure! How about 42?"
     User      "Why did you say 42?"
     Assistant "Because it’s “the answer to the ultimate question of life, the universe, and everything”"
+    ...
 ]
 ```
+Each time you `chat.send` a prompt, both the prompt and GPT's response are added to context.
 
+Context can be accessed using the `chat.context` property (it returns a list of previous interactions like the code above)
+or it can be overwritten with `chat.setContext` method.
 
-Context can be accessed using the `chat.context` property (it returns a list of previous interactions)
-or overwritten with `chat.setContext` method.
-
-Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last prompt plus GPT's result) with `chat.undo()`.
+Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last `User` prompt plus GPT's response) with `chat.undo()`.
 
 
 ### Multiple agents example
@@ -153,14 +154,14 @@ play 20 "I have a word! Which word is it? Ask the first question."
 
 ![fschat-dialog](https://github.com/user-attachments/assets/b5f6f9e8-bf75-4ea8-9d3f-74addfca4331)
 
-The above animation contains some fancy HTML/CSS formatting. Look at example [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below.
+The above animation contains some fancy HTML/CSS formatting. Look at example [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below (note: unfortunately, GitHub's *.ipynb* renderer won't show colored bubbles: they are there but GitHub doesn't show them).
 
 ## Choosing what kind of live output do you want to see
 
 There is an interface called `IChatRenderer` with three implementations:
 - `StdoutRenderer()` is the default for **FsChat** and renders live outputs to console.
 - `NotebookRenderer()` is the default for **FsChat.Interactive** and renders live outputs as HTML to Dotnet Interactive (Polyglot) notebooks.
-- `NoRenderer()` is a dummy renderer that doesn't output anything (use that if you're writing apps).
+- `NoRenderer()` is a dummy renderer that doesn't output anything (choose this if you're writing apps).
 
 There are multiple ways of specifying a renderer:
 ```fsharp
@@ -171,9 +172,8 @@ let chat = Chat(Gpt4o_mini, renderer=StdoutRenderer())
 chat.setRenderer(StdoutRenderer())
 
 // or setting it globally
-Chat.defaultRenderer <- StdoutRenderer()
-
 // If set globally, all new Chat instances will use this renderer.
+Chat.defaultRenderer <- StdoutRenderer()
 
 // `#r FsChat.Interactive` sets it to NotebookRenderer() by default
 // otherwise it defaults to StdoutRenderer().
@@ -210,14 +210,13 @@ let chat = Chat(Gpt4o, renderer=greenHeaderRenderer)
 ```
 ![image](https://github.com/user-attachments/assets/5a2ffa11-7960-484f-a11e-433aaf6b625e)
 
-
-Have a look at [dialog.ipynb](docs/dialog.ipynb) for sample code.
+See [dialog.ipynb](docs/dialog.ipynb) for sample code.
 
 
 # Problems
 
 Dotnet.Interactive (Polyglot) notebooks inside Visual Studio Code don't load rendered content correctly:  
-notebooks when loaded may (will?) lose rendered content.
+notebooks files when opened may (or will?) lose (or delete) rendered content.
 
 (Can someone test if full Visual Studio behaves any better?)
 
@@ -225,11 +224,11 @@ notebooks when loaded may (will?) lose rendered content.
 # TODO
 - [ ] improve GptModel configuration
   - [ ] simplify customization
-- [ ] make Mermaid diagrams smaller
 - [x] record examples
 - [x] add README
-- [ ] make Mermaid dark-mode friendly
 - [ ] extract code snippets from markdown frames
+- [ ] make Mermaid dark-mode friendly
+- [ ] improve Mermaid diagram sizes
 - [ ] add API token limit
 - [ ] parse tables
 - [ ] parse jsons
