@@ -1,6 +1,6 @@
 
 
-# FsChat <small>... yet another GPT client API library</small>
+# FsChat <small>- interactive programmable F# client for LLM Chat APIs</small>
 
 **FsChat** focuses on interactivity and usability:
 - it shows straming responses in real time as they arrive,
