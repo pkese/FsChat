@@ -56,7 +56,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     let mutable ctx = context |> Option.map List.ofSeq |> Option.defaultValue []
     let mutable gptModel = model |> Option.orElseWith (fun () -> Some Gpt4o_mini)
-    let chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
+    let mutable chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
 
     let fetchGpt(prompts) =
         let render = chunkRenderer.Create()
@@ -109,6 +109,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     member this.context with get() = ctx
     member this.setContext(c) = ctx <- c
+    member this.setRenderer(r) = chunkRenderer <- r
     member this.deleteLastInteracton() =
         let rec loop = function
             | [] -> []

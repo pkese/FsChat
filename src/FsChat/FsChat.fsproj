@@ -10,10 +10,15 @@
   <PropertyGroup>
     <Version>0.0.1</Version>
     <IsPackable>true</IsPackable>
+    <PackageId>FsChat</PackageId>
+    <Authors>Peter Kese</Authors>
+    <Company>JSI</Company>
     <PackageDescription>FsChat: LLM chat with interactive output</PackageDescription>
     <PackageTags>dotnet FsChat GPT AI chat</PackageTags>
     <IncludeBuildOutput>true</IncludeBuildOutput>
+    <RepositoryUrl>https://github.com/pkese/FsChat</RepositoryUrl>
     <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn><!-- dll outside of lib/ folder -->
+    <!--PackageReadmeFile>../../README.md</PackageReadmeFile-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,8 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.0" />
-    <PackageReference Include="FSharp.SystemTextJson" Version="1.3.13" />
+    <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.*" />
   </ItemGroup>
 
 </Project>

@@ -12,8 +12,13 @@
     <IsPackable>true</IsPackable>
     <PackageDescription>FsChat support for dotnet-interactive</PackageDescription>
     <PackageTags>polyglot notebook dotnet interactive FsChat GPT AI</PackageTags>
+    <PackageId>FsChat.Interactive</PackageId>
+    <Authors>Peter Kese</Authors>
+    <Company>JSI</Company>
     <IncludeBuildOutput>true</IncludeBuildOutput>
+    <RepositoryUrl>https://github.com/pkese/FsChat</RepositoryUrl>
     <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn><!-- dll outside of lib/ folder -->
+    <!--PackageReadmeFile>../../README.md</PackageReadmeFile-->
   </PropertyGroup>
 
   <ItemGroup>
