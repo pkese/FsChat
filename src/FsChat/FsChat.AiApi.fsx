@@ -25,22 +25,22 @@ type GptApiConfig = {
 let gptApi = function
     | OpenAI ->
         {
-            authToken = Environment.GetEnvironmentVariable "OPENAI_API_TOKEN"
+            authToken = Environment.GetEnvironmentVariable "OPENAI_API_KEY"
             baseUrl = fun _ -> "https://api.openai.com/v1"
         }
     | TogetherAI ->
         {
-            authToken = Environment.GetEnvironmentVariable "TOGETHERAI_API_TOKEN"
+            authToken = Environment.GetEnvironmentVariable "TOGETHERAI_API_KEY"
             baseUrl = fun _ -> "https://api.together.xyz/v1"
         }
     | Groq ->
         {
-            authToken = Environment.GetEnvironmentVariable "GROQ_API_TOKEN"
+            authToken = Environment.GetEnvironmentVariable "GROQ_API_KEY"
             baseUrl = fun _ -> "https://api.groq.com/openai/v1"
         }
     | Lepton ->
         {
-            authToken = Environment.GetEnvironmentVariable "LEPTON_API_TOKEN"
+            authToken = Environment.GetEnvironmentVariable "LEPTON_API_KEY"
             baseUrl = sprintf "https://%s.lepton.run/api/v1"
         }
 

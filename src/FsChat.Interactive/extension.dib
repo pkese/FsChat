@@ -10,20 +10,34 @@ open Microsoft.DotNet.Interactive
 open Microsoft.DotNet.Interactive.Commands
 open Microsoft.DotNet.Interactive.Formatting
 
-do
-    let jsBundle : string = FsChat.Interactive.BundleHelper.loadBundle()
-    $"<script type='module'>{jsBundle}</script>".DisplayAs("text/html") |> ignore
+//do
+//    // load jsBundle directly into the notebook
+//    // that was an experimnt:
+//    //   we now try to avoid loading any JS into the .ipynb file
+//    //   instead of this, we programatically load the bundle into js kernel
+//    //   then render markdown in js kernel
+//    //   and once we have the html, we update the cell display with it.
+//    let jsBundle : string = FsChat.Interactive.BundleHelper.loadBundle()
+//    $"<script type='module'>{jsBundle}</script>".DisplayAs("text/html") |> ignore
 
 module JsKernelProxy =
 
     let private jsKernel = Kernel.Root.FindKernelByName("javascript")
 
+    /// append a chunk of text to a markdown cell (everyhting done in js)
+    /// only applicable in live streaming mode after jsBundle is loaded
     type AppendMarkdown(tagId:string, text:string) =
         inherit KernelCommand("javascript")
         member _.Text with get () = text
         member _.TagId with get () = tagId
         member this.sendAsync() = jsKernel.SendAsync(this) :> Task
 
+    /// Update a markdown cell with full text:
+    /// - send the full text to js kernel
+    /// - js kernel will render the markdown
+    /// - once rendered, it will send `UpdateDisplayedValue` to the cell in F# kernel
+    /// This produces a statically rendered markdown cell (no js needed)
+    /// that gets stored into the .ipynb file
     type UpdateFullMarkdown(displayId:string, props:string, css:string, text:string) =
         inherit KernelCommand("javascript")
         member _.Text with get () = text
@@ -31,28 +45,13 @@ module JsKernelProxy =
         member _.Css with get () = css
         member _.Props with get () = props
         member this.sendAsync() = jsKernel.SendAsync(this) :> Task
-(*
-    type MarkdownResult(text:string) =
-        inherit KernelCommand("fsharp")
-        member _.Text with get () = text
-        member this.sendAsync() = jsKernel.SendAsync(this) |> ignore
-*)
 
     do
         jsKernel.RegisterCommandType<AppendMarkdown>()
         jsKernel.RegisterCommandType<UpdateFullMarkdown>()
-
-
-
-(*
-    do
-        markdownCallback = fun (cmd:TCommand) (ctx:KernelInvocationContext) ->
-            printfn "MarkdownHandler: %A" cmd
-            Task.CompletedTask
-
-        let myKernel = Kernel.Root.FindKernelByName("fsharp")
-        myKernel.RegisterCommandHandler<MarkdownResult>(Func<_,_>(markdownCallback)
-*)
+        // load jsBundle into js kernel
+        let jsBundle : string = FsChat.Interactive.BundleHelper.loadBundle()
+        jsKernel.SendAsync(SubmitCode(jsBundle, "javascript")) |> ignore
 
 (*
     let myKernel =
@@ -71,9 +70,9 @@ module NotebookRenderer =
     //open FsChat.AiApi
     open FsChat.Chat
 
-    /// A renderer that formats chat response into html and renders it into a notebook cell
-    /// props: additional html properties to add to target div element, e.g. `"id='myid' class='myclass otherclass'"`
-    /// css: additional css text, e.g. `"<style>th{color:blue}</style>"` to add before rendered html
+    /// <summary>An IChatRenderer that formats chat response into html and renders it into a notebook cell.</summary>
+    /// <param name="props">Additional html properties to add to target div element, e.g. `"id='myid' class='myclass otherclass'"`</param>
+    /// <param name="css">Additional css text, e.g. `"<style>th{color:blue}</style>"` to add before rendered html</param>
     type NotebookRenderer(?props: string, ?css:string) =
 
         let props = defaultArg props ""
@@ -141,7 +140,7 @@ module NotebookRenderer =
                         appendIncremental stdout
 
 
-    /// Formatter for ChatResponse what collapses the details tag
+    /// Formatter for ChatResponse that collapses the details tag
     let chatResponseFormatter =
         Action<_,_>(fun (value:ChatResponse) (writer:TextWriter) ->
             {| text=value.text; result=value.result |} // repack it into anonymous record to avoid recursion
@@ -164,23 +163,25 @@ module NotebookRenderer =
         window.appendMdChunk(cmd.tagId, cmd.text);
     }});
 
-    let updateDisplayedValue = (valueId, htmlText) => {
+    let updateDisplayedValue = (displayId, htmlText) => {
         let fskernel = kernel.root.findKernelByName('fsharp');
-        let displayedValue = {
-            // KernelCommand  -- polytglot-notebooks/src/contracts.ts
-            destinationUri: null,
-            originUri: null,
-            targetKernelName: fskernel.kernelInfo.localName,
-            // UpdateDisplayedValue
-            formattedValue: {
-                mimeType: 'text/html',
-                suppressDisplay: false,
-                value: htmlText,
-            },
-            // id of value to be updated
-            valueId: valueId,
+        let cmdEnvelope = {
+            commandType:'UpdateDisplayedValue',
+            command: {
+                // KernelCommand  -- polytglot-notebooks/src/contracts.ts
+                destinationUri: null,
+                originUri: null,
+                targetKernelName: fskernel.kernelInfo.localName,
+                // UpdateDisplayedValue
+                formattedValue: {
+                    mimeType: 'text/html',
+                    suppressDisplay: false,
+                    value: htmlText,
+                },
+                // id of display value to be updated
+                valueId: displayId,
+            }
         };
-        let cmdEnvelope = { commandType:'UpdateDisplayedValue', command:displayedValue };
         fskernel.send(cmdEnvelope);
     }
 

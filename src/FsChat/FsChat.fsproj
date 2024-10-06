@@ -1,17 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <PropertyGroup>
+    <Version>0.0.1</Version>
     <IsPackable>true</IsPackable>
     <PackageDescription>FsChat: LLM chat with interactive output</PackageDescription>
     <PackageTags>dotnet FsChat GPT AI chat</PackageTags>
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn><!-- dll outside of lib/ folder -->
-    <Version>0.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>

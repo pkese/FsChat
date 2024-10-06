@@ -17,8 +17,7 @@ type IChatRenderer =
 
 //type ChunkRenderer = unit -> GptChunk -> unit
 
-type ChunkRenderer() =
-
+type StdoutRenderer() =
     let formatChunk = function
         | Role role -> sprintf "\nRole: %s\n" role
         | Preamble text
@@ -32,19 +31,27 @@ type ChunkRenderer() =
                 formatChunk chunk
                 |> Console.Out.Write
 
+type NoRenderer() =
+    interface IChatRenderer with
+        member this.Create() = fun _ -> ()
+
 type ChatResponse = {
     role: string option
     text: string
     result: Result<FinishReason*GptStats, string>
-}
+} with
+    member this.IsSuccess = this.result |> Result.isOk
 
 module Chat =
-    let mutable defaultRenderer : IChatRenderer = ChunkRenderer()
+    /// <summary>Default renderer used by <see cref="Chat"/> instances</summary>
+    /// <remarks>Can be replaced by setting <c>Chat.defaultRenderer <- NoRenderer()</c></remarks>
+    /// <remarks>`FsChat.Interactive` replaces this with <see cref="NotebookRenderer"/>NotebookRenderer</see></remarks>
+    let mutable defaultRenderer : IChatRenderer = StdoutRenderer()
 
-/// Chat model
-/// model: GPT model to use
-/// renderer: Renderer to use (see NotebookRenderer)
-/// context: Initial chat prompt context, e.g. [ System "You're a helpful assistant" ]
+/// <summary>Chat model</summary>
+/// <param name="model">GPT model to use</param>
+/// <param name="renderer">IChatRenderer to use (see <see cref="NotebookRenderer"/>NotebookRenderer</see>)</param>
+/// <param name="context">Initial chat prompt context, e.g. <c>[ System "You're a helpful assistant" ]</c></param>
 type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     let mutable ctx = context |> Option.map List.ofSeq |> Option.defaultValue []
