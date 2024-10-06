@@ -1,9 +1,9 @@
 #if INTERACTIVE
 #r "nuget: FSharp.SystemTextJson, 1.3.13"
 #r "nuget: FSharp.Control.TaskSeq"
-#load "Gpt.Types.fs"
+#load "FsChat.Types.fs"
 #else
-module Gpt.Api
+module FsChat.AiApi
 #endif
 
 open System
@@ -13,7 +13,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open FSharp.SystemTextJson
 open FSharp.Control
-open Gpt.Types
+open FsChat.Types
 
 type ModelName = string
 

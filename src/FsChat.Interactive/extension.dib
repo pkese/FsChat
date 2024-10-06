@@ -10,22 +10,11 @@ open Microsoft.DotNet.Interactive
 open Microsoft.DotNet.Interactive.Commands
 open Microsoft.DotNet.Interactive.Formatting
 
-type Markdown(text:string, ?htmlProps:string) =
-    member val props = htmlProps |> Option.defaultValue ""
-    member val text = text with get
-    /// Formatter for ChatResponse what collapses the details tag
-    static member formatter =
-        Action<_,_>(fun (m:Markdown) (writer:TextWriter) ->
-            $"<div class='markdown' {m.props}><pre>\n{m.text}\n</pre></div>\n<script type='module'>window.markdownAll()</script>"
-            |> writer.Write)
-
-Formatter.Register<Markdown>(Markdown.formatter, "text/html")
-
 do
     let jsBundle : string = FsChat.Interactive.BundleHelper.loadBundle()
     $"<script type='module'>{jsBundle}</script>".DisplayAs("text/html") |> ignore
 
-module JsKernel =
+module JsKernelProxy =
 
     let private jsKernel = Kernel.Root.FindKernelByName("javascript")
 
@@ -35,12 +24,11 @@ module JsKernel =
         member _.TagId with get () = tagId
         member this.sendAsync() = jsKernel.SendAsync(this) :> Task
 
-    type UpdateFullMarkdown(displayId:string, tagId:string, classes:string, props:string, text:string) =
+    type UpdateFullMarkdown(displayId:string, props:string, css:string, text:string) =
         inherit KernelCommand("javascript")
         member _.Text with get () = text
         member _.DisplayId with get () = displayId
-        member _.TagId with get () = tagId
-        member _.Classes with get () = classes
+        member _.Css with get () = css
         member _.Props with get () = props
         member this.sendAsync() = jsKernel.SendAsync(this) :> Task
 (*
@@ -75,94 +63,95 @@ module JsKernel =
             Task.CompletedTask)
 *)
 
+[<AutoOpen>]
+module NotebookRenderer =
 
-open FSharp.Control
-open Gpt.Types
-open Gpt.Api
-open FsChat
+    open FSharp.Control
+    open FsChat.Types
+    //open FsChat.AiApi
+    open FsChat.Chat
 
-type NotebookRenderer(?style: string) =
+    /// A renderer that formats chat response into html and renders it into a notebook cell
+    /// props: additional html properties to add to target div element, e.g. `"id='myid' class='myclass otherclass'"`
+    /// css: additional css text, e.g. `"<style>th{color:blue}</style>"` to add before rendered html
+    type NotebookRenderer(?props: string, ?css:string) =
 
-    let tagIdGenerator =
-        let mutable tagId = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1727989007L
-        fun () -> tagId <- tagId + 1L; tagId
+        let props = defaultArg props ""
+        let css = defaultArg css ""
 
-    let formatChunk = function
-        | Role role -> sprintf "\nRole: %s\n" role
-        | Preamble text
-        | Chunk text -> text
-        | Finished (reason, stats) -> "" // sprintf "\n\nFinished in %.2fs: %A, %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
-        | Err err -> sprintf "\nError: %s\n" err
+        let tagIdGenerator =
+            let mutable tagId = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1727989007L
+            fun () -> tagId <- tagId + 1L; tagId
 
-    let isComplete = function
-        | Finished _
-        | Err _ -> true
-        | _ -> false
+        let formatChunk = function
+            | Role role -> sprintf "\nRole: %s\n" role
+            | Preamble text
+            | Chunk text -> text
+            | Finished (reason, stats) -> "" // sprintf "\n\nFinished in %.2fs: %A, %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
+            | Err err -> sprintf "\nError: %s\n" err
 
-    interface IChatRenderer with
-        member _.Create() =
-            let htmlTagId = $"gptresp{tagIdGenerator()}"
-            let props =
-                match style with
-                | None -> ""
-                | Some style -> $"style='{style}'"
-            let display = $"<div class='chat-response' id='{htmlTagId}' {props}/>".DisplayAs("text/html")
+        let isComplete = function
+            | Finished _
+            | Err _ -> true
+            | _ -> false
 
-            let mutable lastTask = Task.Delay(TimeSpan.FromMilliseconds 250.0)
-            let fullText = Text.StringBuilder()
-            let mutable pendingTexts = ResizeArray<string>()
+        interface IChatRenderer with
+            member _.Create() =
+                let htmlTagId = $"gptresp{tagIdGenerator()}"
+                let display = $"<div class='chat-response' id='{htmlTagId}' {props}/>".DisplayAs("text/html")
 
-            let appendIncremental (stdout:string) =
-                if lastTask.IsCompleted then
-                    let stdout =
-                        if pendingTexts.Count = 0 then stdout
-                        else
+                let mutable lastTask = Task.Delay(TimeSpan.FromMilliseconds 250.0)
+                let fullText = Text.StringBuilder()
+                let mutable pendingTexts = ResizeArray<string>()
+
+                let appendIncremental (stdout:string) =
+                    if lastTask.IsCompleted then
+                        let stdout =
+                            if pendingTexts.Count = 0 then stdout
+                            else
+                            pendingTexts.Add(stdout)
+                            pendingTexts |> String.concat "" |> fun p -> p + stdout
+                        pendingTexts.Clear()
+                        lastTask <- JsKernelProxy.AppendMarkdown(htmlTagId, stdout).sendAsync()
+                    else
                         pendingTexts.Add(stdout)
-                        pendingTexts |> String.concat "" |> fun p -> p + stdout
-                    pendingTexts.Clear()
-                    lastTask <- JsKernel.AppendMarkdown(htmlTagId, stdout).sendAsync()
-                else
-                    pendingTexts.Add(stdout)
-                    lastTask <- task {
+                        lastTask <- task {
+                            do! lastTask
+                            match pendingTexts.Count with
+                            | 0 ->
+                                return! Task.CompletedTask
+                            | text ->
+                                let text = pendingTexts |> String.concat ""
+                                pendingTexts.Clear()
+                                return! JsKernelProxy.AppendMarkdown(htmlTagId, text).sendAsync()
+                        }
+
+                let renderFinal () =
+                    task {
                         do! lastTask
-                        match pendingTexts.Count with
-                        | 0 ->
-                            return! Task.CompletedTask
-                        | text ->
-                            let text = pendingTexts |> String.concat ""
-                            pendingTexts.Clear()
-                            return! JsKernel.AppendMarkdown(htmlTagId, text).sendAsync()
-                    }
+                        do! JsKernelProxy.UpdateFullMarkdown(display.DisplayId, props, css, fullText.ToString()).sendAsync()
+                    } |> ignore
 
-            let renderFinal () =
-                task {
-                    do! lastTask
-                    //display.Update(Markdown("Updated:"+fullText.ToString(), props))
-                    do! JsKernel.UpdateFullMarkdown(display.DisplayId, htmlTagId, "", props, fullText.ToString()).sendAsync()
-                    //do! JsKernel.UpdateFullMarkdown(htmlTagId, fullText.ToString()).sendAsync()
-                } |> ignore
-
-            fun (chunk:GptChunk) ->
-                let stdout = formatChunk chunk
-                fullText.Append(stdout) |> ignore
-                if isComplete chunk then
-                    renderFinal()
-                else
-                    appendIncremental stdout
+                fun (chunk:GptChunk) ->
+                    let stdout = formatChunk chunk
+                    fullText.Append(stdout) |> ignore
+                    if isComplete chunk then
+                        renderFinal()
+                    else
+                        appendIncremental stdout
 
 
-Chat.defaultRenderer <- NotebookRenderer()
-
-type ChatResponse with
     /// Formatter for ChatResponse what collapses the details tag
-    static member formatter =
+    let chatResponseFormatter =
         Action<_,_>(fun (value:ChatResponse) (writer:TextWriter) ->
             {| text=value.text; result=value.result |} // repack it into anonymous record to avoid recursion
             |> _.ToDisplayString("text/html") // render as html
             |> _.Replace("details open=\"open\"", "details") // but collapse the details tag
             |> writer.Write)
 
-Formatter.Register<ChatResponse>(ChatResponse.formatter, "text/html")
+    do
+        Chat.defaultRenderer <- NotebookRenderer()
+        Formatter.Register<ChatResponse>(chatResponseFormatter, "text/html")
 
 #!javascript
 
@@ -196,12 +185,13 @@ Formatter.Register<ChatResponse>(ChatResponse.formatter, "text/html")
     }
 
     jskernel.registerCommandHandler({commandType: 'UpdateFullMarkdown', handle: async c => {
-        let { displayId, tagId, classes, props, text } = c.commandEnvelope.command;
+        let { displayId, classes, props, css, text } = c.commandEnvelope.command;
         let mdHtml = await window.renderMarkdown(text);
+        // remove some spacing to render table rows in one line
         mdHtml = mdHtml.replace(/<\/t(.)>\s+<t/g, '</t$1><t');
-        let html = `<div class='chat-response markdown md-done ${classes}' id='${tagId}' ${props}>${mdHtml}</div>`;
+        let html = `<div class='chat-response md-blk'>${css}<div ${props}>${mdHtml}</div></div>`;
         updateDisplayedValue(displayId, html);
         //updateDisplayedValue(displayId, text);
     }});
-    console.log("test2");
+    console.log("FsChat is ready.");
 })();

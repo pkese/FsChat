@@ -21,6 +21,7 @@ export default async function injectMermaid(md, {mermaid, ...options}) {
     let defaultFenceRenderer = md.renderer.rules.fence;
     // Render custom code types as SVGs, letting the fence parser do all the heavy lifting.
     function customFenceRenderer(tokens, idx, options, env, slf) {
+
         let token = tokens[idx];
         let info = token.info.trim();
         let langName = info ? getLangName(info) : "";
@@ -38,9 +39,20 @@ export default async function injectMermaid(md, {mermaid, ...options}) {
 
         // Create element to render into
         const element_id = `mermaid-${idCounter++}`;
+        let placeholderDiv = `<div id='${element_id}' class='mermaid'></div>`;
+
+        let renderedSvgAsync = mermaid.render(offscreen.id, token.content);
+
+        env.postprocessMiddleware =
+            env.postprocessMiddleware.then(async (text) => {
+                let { svg, bindingFunc } = await renderedSvgAsync;
+                offscreen.remove();
+                return text.replace(placeholderDiv, `<div class='mermaid-blk' style='background-color:white;'>\n${svg}\n</div>`);
+            });
 
         // workaround for dark mode vscode
 
+        /*
         { // Render with Mermaid asynchronously
             renderTimeout()
             .then(() => mermaid.render(offscreen.id, token.content))
@@ -53,7 +65,8 @@ export default async function injectMermaid(md, {mermaid, ...options}) {
                 offscreen.remove();
             });
         }
-        return `<div id='${element_id}' class='mermaid' style='background-color:#eee;'>\n<pre>\n${token.content}\n</pre>\n</div>`;
+        */
+        return placeholderDiv;
     }
     md.renderer.rules.fence = customFenceRenderer;
 }

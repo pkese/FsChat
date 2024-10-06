@@ -1,15 +1,16 @@
 #if INTERACTIVE
-#load "Gpt.Api.fsx"
+#load "FsChat.AiApi.fsx"
 #else
-module FsChat
+[<AutoOpen>]
+module FsChat.Chat
 #endif
 
 open System
 open System.Text
 open System.Threading.Tasks
 open FSharp.Control
-open Gpt.Types
-open Gpt.Api
+open FsChat.Types
+open FsChat.AiApi
 
 type IChatRenderer =
     abstract member Create: unit -> (GptChunk -> unit)
@@ -40,9 +41,13 @@ type ChatResponse = {
 module Chat =
     let mutable defaultRenderer : IChatRenderer = ChunkRenderer()
 
-type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt list) =
+/// Chat model
+/// model: GPT model to use
+/// renderer: Renderer to use (see NotebookRenderer)
+/// context: Initial chat prompt context, e.g. [ System "You're a helpful assistant" ]
+type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
-    let mutable ctx = defaultArg context []
+    let mutable ctx = context |> Option.map List.ofSeq |> Option.defaultValue []
     let mutable gptModel = model |> Option.orElseWith (fun () -> Some Gpt4o_mini)
     let chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
 
@@ -90,8 +95,8 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt list) =
 
     member this.send(text:string) =
         fetch (ctx @ [User text])
-    member this.send(prompts: Gpt.Types.Prompt list) =
-        fetch (ctx @ prompts)
+    member this.send(prompts: Prompt seq) =
+        fetch [ yield! ctx; yield! prompts ]
 
     member this.clear() = ctx <- []
 

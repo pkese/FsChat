@@ -15,9 +15,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Gpt.Types.fs" />
-    <Compile Include="Gpt.Api.fsx" />
-    <Compile Include="FsChat.fsx" />
+    <Compile Include="FsChat.Types.fs" />
+    <Compile Include="FsChat.AiApi.fsx" />
+    <Compile Include="FsChat.Chat.fsx" />
   </ItemGroup>
 
   <ItemGroup>

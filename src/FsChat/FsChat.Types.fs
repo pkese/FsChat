@@ -1,4 +1,5 @@
-module Gpt.Types
+[<AutoOpen>]
+module FsChat.Types
 
 open System
 

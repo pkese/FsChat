@@ -49,11 +49,20 @@ window.renderMarkdown = async (text) => {
     else features = {};
     let md = await getMarkdown(features);
     //console.log("md.for", features, md);
-    let html = md.render(text)
+    let resolveMarkdown = null;
+    let env = {
+        postprocessMiddleware: new Promise((resolve) => {
+            resolveMarkdown = resolve;
+        })
+    };
+    let html = md.render(text, env); // Mermaid will inject (chain) itself into env.postprocessMiddleware
+    resolveMarkdown(html);
     //console.log("render:", text, html);
-    return html;
+    let patchedHtml = await env.postprocessMiddleware;
+    return patchedHtml;
 }
 
+/*
 window.markdownAll = () => {
     document
         .querySelectorAll('.markdown:not(.md-done)')
@@ -64,6 +73,7 @@ window.markdownAll = () => {
             element.innerHTML = html;
         });
 };
+*/
 
 window.appendMdChunk = async (tagId, newText) => {
     let el = document.getElementById(tagId);
