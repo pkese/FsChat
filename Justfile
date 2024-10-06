@@ -33,3 +33,7 @@ nuget-local: nupkg
     cd {{PKGS_DIR}}/unzipped && unzip ../fschat.interactive/{{FSCHAT_INTERACTIVE_VER}}/fschat.interactive.{{FSCHAT_INTERACTIVE_VER}}.nupkg
     # delete it from nuget cache
     rm -rf ~/.nuget/packages/fschat ~/.nuget/packages/fschat.interactive
+
+nuget-push:
+    dotnet nuget push {{PKGS_DIR}}/fschat/{{FSCHAT_VER}}/fschat.{{FSCHAT_VER}}.nupkg                         --api-key {{NUGET_AP_KEY}} --source https://api.nuget.org/v3/index.json
+    dotnet nuget push {{PKGS_DIR}}/fschat.interactive/{{FSCHAT_INTERACTIVE_VER}}/fschat.interactive.{{FSCHAT_VER}}.nupkg                         --api-key {{NUGET_AP_KEY}} --source https://api.nuget.org/v3/index.json

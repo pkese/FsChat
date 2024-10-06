@@ -1,8 +1,8 @@
 
 
-# FsChat <small>... is yet another GPT client API library</small>
+# FsChat <small>... yet another GPT client API library</small>
 
-However **FsChat** focuses on interactivity and usability:
+**FsChat** focuses on interactivity and usability:
 - it shows straming responses in real time as they arrive,
 - it can render Markdown and Mermaid diagrams for you,
 - it makes it easy to interact with GPT agents programmatically.
