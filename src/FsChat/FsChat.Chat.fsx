@@ -110,7 +110,8 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
     member this.context with get() = ctx
     member this.setContext(c) = ctx <- c
     member this.setRenderer(r) = chunkRenderer <- r
-    member this.deleteLastInteracton() =
+    /// deletes last interaction (your last prompt plus assistant's last response)
+    member this.undo() =
         let rec loop = function
             | [] -> []
             | User _ :: Assistant _ :: [] -> []
