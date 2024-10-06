@@ -42,26 +42,31 @@ let getMarkdown = (features) => {
     }
 }
 
+window.renderMarkdown = async (text) => {
+    let features;
+    if (text.includes('```mermaid')) features = {mermaid:true, hljs:true}
+    else if (mdWithHljs || text.includes('```')) features = {hljs:true}
+    else features = {};
+    let md = await getMarkdown(features);
+    //console.log("md.for", features, md);
+    let html = md.render(text)
+    //console.log("render:", text, html);
+    return html;
+}
+
 window.markdownAll = () => {
     document
         .querySelectorAll('.markdown:not(.md-done)')
         .forEach(async (element) => {
             let text = element.textContent;
             element.classList.add('md-done');
-            let features;
-            if (text.includes('```mermaid')) features = {mermaid:true, hljs:true}
-            else if (mdWithHljs || text.includes('```')) features = {hljs:true}
-            else features = {};
-            let md = await getMarkdown(features);
-            //console.log("md.for", features, md);
-            let html = md.render(text)
-            //console.log("render:", text, html);
+            let html = await window.renderMarkdown(text);
             element.innerHTML = html;
         });
 };
 
-window.appendChunk = async (id, newText) => {
-    let el = document.getElementById(id);
+window.appendMdChunk = async (tagId, newText) => {
+    let el = document.getElementById(tagId);
     // extract current text from data
     let text = el.getAttribute('data-text') || '';
     text = text + newText;
@@ -74,4 +79,3 @@ window.appendChunk = async (id, newText) => {
     let md = await getMarkdown(features);
     el.innerHTML = md.render(text);
 }
-

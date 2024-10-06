@@ -40,11 +40,11 @@ type ChatResponse = {
 module Chat =
     let mutable defaultRenderer : IChatRenderer = ChunkRenderer()
 
-type Chat(?model:GptModel, ?chunkRenderer:IChatRenderer) =
+type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt list) =
 
-    let mutable ctx : Gpt.Types.Prompt list = []
+    let mutable ctx = defaultArg context []
     let mutable gptModel = model |> Option.orElseWith (fun () -> Some Gpt4o_mini)
-    let chunkRenderer : IChatRenderer = defaultArg chunkRenderer Chat.defaultRenderer
+    let chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
 
     let fetchGpt(prompts) =
         let render = chunkRenderer.Create()

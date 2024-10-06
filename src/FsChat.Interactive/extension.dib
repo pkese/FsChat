@@ -25,17 +25,46 @@ do
     let jsBundle : string = FsChat.Interactive.BundleHelper.loadBundle()
     $"<script type='module'>{jsBundle}</script>".DisplayAs("text/html") |> ignore
 
-module DomAppend =
+module JsKernel =
 
-    type AppendData(text:string, id:string) =
+    let private jsKernel = Kernel.Root.FindKernelByName("javascript")
+
+    type AppendMarkdown(tagId:string, text:string) =
         inherit KernelCommand("javascript")
         member _.Text with get () = text
-        member _.Id with get () = id
+        member _.TagId with get () = tagId
+        member this.sendAsync() = jsKernel.SendAsync(this) :> Task
 
-    let private jsKernel =
-        let jsKernel = Kernel.Root.FindKernelByName("javascript")
-        jsKernel.RegisterCommandType<AppendData>()
-        jsKernel
+    type UpdateFullMarkdown(displayId:string, tagId:string, classes:string, props:string, text:string) =
+        inherit KernelCommand("javascript")
+        member _.Text with get () = text
+        member _.DisplayId with get () = displayId
+        member _.TagId with get () = tagId
+        member _.Classes with get () = classes
+        member _.Props with get () = props
+        member this.sendAsync() = jsKernel.SendAsync(this) :> Task
+(*
+    type MarkdownResult(text:string) =
+        inherit KernelCommand("fsharp")
+        member _.Text with get () = text
+        member this.sendAsync() = jsKernel.SendAsync(this) |> ignore
+*)
+
+    do
+        jsKernel.RegisterCommandType<AppendMarkdown>()
+        jsKernel.RegisterCommandType<UpdateFullMarkdown>()
+
+
+
+(*
+    do
+        markdownCallback = fun (cmd:TCommand) (ctx:KernelInvocationContext) ->
+            printfn "MarkdownHandler: %A" cmd
+            Task.CompletedTask
+
+        let myKernel = Kernel.Root.FindKernelByName("fsharp")
+        myKernel.RegisterCommandHandler<MarkdownResult>(Func<_,_>(markdownCallback)
+*)
 
 (*
     let myKernel =
@@ -46,15 +75,6 @@ module DomAppend =
             Task.CompletedTask)
 *)
 
-    let domAppend (id:string) (text:string) =
-        jsKernel.SendAsync(AppendData(text, id)) |> ignore
-
-    let domAppendAsync (id:string) (text:string) =
-        jsKernel.SendAsync(AppendData(text, id)) :> Task
-
-
-let domAppend = DomAppend.domAppend
-let domAppendAsync = DomAppend.domAppendAsync
 
 open FSharp.Control
 open Gpt.Types
@@ -100,7 +120,7 @@ type NotebookRenderer(?style: string) =
                         pendingTexts.Add(stdout)
                         pendingTexts |> String.concat "" |> fun p -> p + stdout
                     pendingTexts.Clear()
-                    lastTask <- domAppendAsync htmlTagId stdout
+                    lastTask <- JsKernel.AppendMarkdown(htmlTagId, stdout).sendAsync()
                 else
                     pendingTexts.Add(stdout)
                     lastTask <- task {
@@ -111,13 +131,15 @@ type NotebookRenderer(?style: string) =
                         | text ->
                             let text = pendingTexts |> String.concat ""
                             pendingTexts.Clear()
-                            return! domAppendAsync htmlTagId text
+                            return! JsKernel.AppendMarkdown(htmlTagId, text).sendAsync()
                     }
 
             let renderFinal () =
                 task {
                     do! lastTask
-                    display.Update(Markdown(fullText.ToString(), props))
+                    //display.Update(Markdown("Updated:"+fullText.ToString(), props))
+                    do! JsKernel.UpdateFullMarkdown(display.DisplayId, htmlTagId, "", props, fullText.ToString()).sendAsync()
+                    //do! JsKernel.UpdateFullMarkdown(htmlTagId, fullText.ToString()).sendAsync()
                 } |> ignore
 
             fun (chunk:GptChunk) ->
@@ -148,20 +170,38 @@ Formatter.Register<ChatResponse>(ChatResponse.formatter, "text/html")
 (function() {
     let jskernel = kernel.root.findKernelByName('javascript');
 
-    jskernel.registerCommandHandler({commandType: 'AppendData', handle: c => {
+    jskernel.registerCommandHandler({commandType: 'AppendMarkdown', handle: c => {
         const cmd = c.commandEnvelope.command;
-        window.appendChunk(cmd.id, cmd.text);
+        window.appendMdChunk(cmd.tagId, cmd.text);
     }});
+
+    let updateDisplayedValue = (valueId, htmlText) => {
+        let fskernel = kernel.root.findKernelByName('fsharp');
+        let displayedValue = {
+            // KernelCommand  -- polytglot-notebooks/src/contracts.ts
+            destinationUri: null,
+            originUri: null,
+            targetKernelName: fskernel.kernelInfo.localName,
+            // UpdateDisplayedValue
+            formattedValue: {
+                mimeType: 'text/html',
+                suppressDisplay: false,
+                value: htmlText,
+            },
+            // id of value to be updated
+            valueId: valueId,
+        };
+        let cmdEnvelope = { commandType:'UpdateDisplayedValue', command:displayedValue };
+        fskernel.send(cmdEnvelope);
+    }
+
+    jskernel.registerCommandHandler({commandType: 'UpdateFullMarkdown', handle: async c => {
+        let { displayId, tagId, classes, props, text } = c.commandEnvelope.command;
+        let mdHtml = await window.renderMarkdown(text);
+        mdHtml = mdHtml.replace(/<\/t(.)>\s+<t/g, '</t$1><t');
+        let html = `<div class='chat-response markdown md-done ${classes}' id='${tagId}' ${props}>${mdHtml}</div>`;
+        updateDisplayedValue(displayId, html);
+        //updateDisplayedValue(displayId, text);
+    }});
+    console.log("test2");
 })();
-
-#!fsharp
-
-// test the domAppend function
-(*
-if false then
-    "<h5>Appending text below:</h5><p id='out1'></p>".DisplayAs("text/html") |> ignore
-
-    System.Threading.Tasks.Task.Delay(100).Wait()
-    for s in ["# Hello";"\n\n"; "beautiful"; " "; "world";"!"] do
-        domAppendAsync "out1" s |> (_.Wait()) |> ignore
-*)
