@@ -1,5 +1,5 @@
 #if INTERACTIVE
-#load "FsChat.AiApi.fsx"
+#load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.TableReader.fsx" "FsChat.Markdown.fsx"
 #else
 namespace FsChat
 #endif
@@ -40,6 +40,15 @@ type ChatResponse = {
     result: Result<FinishReason*GptStats, string>
 } with
     member this.IsSuccess = this.result |> Result.isOk
+    member this.Tables with get() =
+        this.text
+        |> FsChat.Markdown.parse
+        |> FsChat.Markdown.getTables
+
+    member this.ParseTableAs<'T>() : 'T =
+        this.Tables
+        |> List.last
+        |> FsChat.TableReader.parseTableAs<'T>
 
 module Chat =
     /// <summary>Default renderer used by <see cref="Chat"/> instances</summary>

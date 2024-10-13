@@ -24,12 +24,16 @@
   <ItemGroup>
     <Compile Include="FsChat.Types.fsx" />
     <Compile Include="FsChat.AiApi.fsx" />
+    <Compile Include="FsChat.TableReader.fsx" />
+    <Compile Include="FsChat.Markdown.fsx" />
     <Compile Include="FsChat.fsx" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
+    <PackageReference Include="FSharp.Formatting" Version="20.0.1" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.*" />
+    <PackageReference Include="TypeShape" Version="10.0.0" />
   </ItemGroup>
 
 </Project>
