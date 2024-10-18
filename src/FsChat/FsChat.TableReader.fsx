@@ -1,5 +1,5 @@
-#if INTERACTIVE
 #r "nuget: TypeShape, 10.0.0"
+#if INTERACTIVE
 #else
 module FsChat.TableReader
 #endif
@@ -11,7 +11,22 @@ open TypeShape.Core
 type FldName = string
 type ColName = string
 
+(*
 
+    given:
+
+        type MyRecord = { name: string; age: int; email: string; phone: string }
+
+    provides a function:
+
+        parseTableAs<MyRecord list> : TableData -> MyRecord list
+
+    that will parse a Markdown table.
+
+    To match the table columns to the record fields, we use 'edit distance'.
+
+*)
+    
 type TableData = {
     headers: ColName list
     rows: string list list

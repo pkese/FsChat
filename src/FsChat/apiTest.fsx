@@ -17,7 +17,7 @@ do // load .env file
 
 let selectedModel =
     //None
-    Some LLama31_8b
+    Some TogetherAI.llama31_8b
 
 let testStream() =
     taskSeq {

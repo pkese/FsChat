@@ -10,7 +10,7 @@ open FsChat.Types
 
 DotEnv.Load(DotEnvOptions(envFilePaths=[".env"]))
 
-let chat = Chat(Gpt4o_mini)
+let chat = Chat(OpenAI.gpt4o_mini)
 
 let resp = chat.send [
     User """

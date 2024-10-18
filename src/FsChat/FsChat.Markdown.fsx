@@ -1,12 +1,13 @@
 #if INTERACTIVE
-#r "nuget: FSharp.Formatting, 21.0.0-beta-003"
+//
+#r "nuget: FSharp.Formatting, 20.0.1"
 #load "FsChat.TableReader.fsx"
 #else
 module FsChat.Markdown
+open FsChat.TableReader
 #endif
 
 open FSharp.Formatting.Markdown
-open FsChat.TableReader
 
 /// Extract text from MarkdownParagraphs (e.g. table cells)
 /// Note: in cese of links and images, we return the URL instead of text

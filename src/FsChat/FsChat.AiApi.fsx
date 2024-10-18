@@ -15,68 +15,11 @@ open FSharp.SystemTextJson
 open FSharp.Control
 open FsChat.Types
 
-type ModelName = string
 
-type GptApiConfig = {
-    authToken: string
-    baseUrl: ModelName -> string
-}
-
-let gptApi = function
-    | OpenAI ->
-        {
-            authToken = Environment.GetEnvironmentVariable "OPENAI_API_KEY"
-            baseUrl = fun _ -> "https://api.openai.com/v1"
-        }
-    | TogetherAI ->
-        {
-            authToken = Environment.GetEnvironmentVariable "TOGETHERAI_API_KEY"
-            baseUrl = fun _ -> "https://api.together.xyz/v1"
-        }
-    | Groq ->
-        {
-            authToken = Environment.GetEnvironmentVariable "GROQ_API_KEY"
-            baseUrl = fun _ -> "https://api.groq.com/openai/v1"
-        }
-    | Lepton ->
-        {
-            authToken = Environment.GetEnvironmentVariable "LEPTON_API_KEY"
-            baseUrl = sprintf "https://%s.lepton.run/api/v1"
-        }
-
-type GtpModelInfo = {
-    model: ModelName
-    tokens: int
-    api: GptApi
-} with
-    member this.AuthToken = (gptApi this.api).authToken
-    member this.BaseUrl = (gptApi this.api).baseUrl this.model
-
-let gptModel = function
-    | Gpt4 ->       { tokens =   8192; api = OpenAI; model = "gpt-4" }
-    | Gpt4o ->      { tokens = 131072; api = OpenAI; model = "gpt-4o" }
-    | Gpt4o_mini -> { tokens = 131072; api = OpenAI; model = "gpt-4o-mini" }
-    | Gpt4T ->      { tokens = 131072; api = OpenAI; model = "gpt-4-turbo" }
-    | Gpt35T ->     { tokens =  16385; api = OpenAI; model = "gpt-3.5-turbo" }
-    | O1_preview -> { tokens = 128000; api = OpenAI; model = "o1-preview" }
-    | O1_mini ->    { tokens = 128000; api = OpenAI; model = "o1-mini" }
-    // Groq
-    //| LLama31_405b -> { tokens =  131072; api = Groq; model = "llama-3.1-405b-reasoning" }
-    | LLama31_70b -> { tokens =  131072; api = Groq; model = "llama-3.1-70b-versatile" }
-    // TogetherAI
-    //| LLama31_405b -> { tokens =  8192; api = TogetherAI; model = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" }
-    //| LLama31_70b -> { tokens =  16384; api = TogetherAI; model = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" }
-    | LLama31_8b -> { tokens =  16384; api = TogetherAI; model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" }
-    | LLama3_70b -> { tokens =   8192; api = TogetherAI; model = "meta-llama/Llama-3-70b-chat-hf" }
-    | Qwen2_72b_instr -> { tokens =  131072; api = TogetherAI; model = "Qwen/Qwen2-72B-Instruct" }
-    // Lepton
-    //| LLama31_70b -> { tokens = 131072; api = Lepton; model="llama3-1-70b" }
-    | LLama31_405b -> { tokens = 131072; api = Lepton; model="llama3-1-405b" }
-
-let defaultModel = LLama31_70b
+let defaultModel = OpenAI.gpt4o
 
 let llmConfig =
-    gptModel defaultModel
+    OpenAI.gpt4o
     //gptModel Gpt4o
 
 module Json =
@@ -201,8 +144,8 @@ with
 
 
 
-let completionRequest model (prompt: PromptMsg seq) = {|
-    model = model |> gptModel |> _.model
+let completionRequest (model:GptModel) (prompt: PromptMsg seq) = {|
+    model = model.id
     messages = prompt
     user = "glimpse.dev"
     seed = 123
@@ -216,17 +159,15 @@ let completionRequest model (prompt: PromptMsg seq) = {|
 let fetchStreaming =
 
     let client = new HttpClient()
-    client.DefaultRequestHeaders.Authorization <- new AuthenticationHeaderValue("Bearer", llmConfig.AuthToken)
     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"))
     client.DefaultRequestHeaders.TransferEncoding.Add(new TransferCodingHeaderValue("chunked"))
     //client.DefaultRequestHeaders.AcceptEncoding.Clear()
 
     fun (messages: PromptMsg seq, model: GptModel option) -> taskSeq {
         let model = model |> Option.defaultValue defaultModel
-        let modelSpec = gptModel model
         try
-            use request = new HttpRequestMessage(HttpMethod.Post, $"{modelSpec.BaseUrl}/chat/completions")
-            request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", modelSpec.AuthToken)
+            use request = new HttpRequestMessage(HttpMethod.Post, $"{model.baseUrl}/chat/completions")
+            request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", model.authToken())
             let requestMsg = messages |> completionRequest model
             use content = Json.JsonContent.Create(requestMsg, options=Json.options)
             request.Content <- content
@@ -255,7 +196,7 @@ let fetchStreaming =
                                 match chunk.created with
                                 | Some ts -> DateTimeOffset.FromUnixTimeSeconds(ts).UtcDateTime
                                 | None -> startedTs
-                            requestedModel = model |> gptModel |> _.model
+                            requestedModel = model.id
                             actualModel = chunk.model
                             fingerprint = chunk.system_fingerprint
                             nTokens = 0
@@ -304,7 +245,7 @@ let fetchStreaming =
                         }
                         finished <- Some (Finished (reason, stats'))
                     // Lepton on streaming requests omits finishReason, but sets usage
-                    | None when chunk.usage <> None && modelSpec.api = Lepton ->
+                    | None when chunk.usage <> None && model.provider = ApiProvider.Lepton ->
                         let usage = chunk.usage.Value
                         let stats' = {
                             stats.Value with
@@ -316,7 +257,7 @@ let fetchStreaming =
                 elif line = "" then ()
                 elif line = "data: [DONE]" then ()
                 else
-                    yield Err $"Unexpected {modelSpec.api} streaming result: `{line}`"
+                    yield Err $"Unexpected {model.provider} - {model.id} streaming result: `{line}`"
 
             match finished with
             | Some f -> yield f

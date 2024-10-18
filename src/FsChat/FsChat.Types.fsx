@@ -7,54 +7,93 @@ module FsChat.Types
 
 open System
 
-type GptApi =
+type ApiProvider =
     | OpenAI
     | TogetherAI
     | Groq
     | Lepton
 
-type GptModel =
-    | Gpt35T
-    | Gpt4
-    | Gpt4T
-    | Gpt4o
-    | Gpt4o_mini
-    | O1_preview
-    | O1_mini
-    | LLama31_405b
-    | LLama31_70b
-    | LLama31_8b
-    | LLama3_70b
-    | Qwen2_72b_instr
-with
-    static member all = [
-        LLama31_405b; LLama31_70b; LLama31_8b; LLama3_70b; Gpt4o; Gpt4o_mini; O1_preview; O1_mini; Gpt4T; Gpt4; Gpt35T
-        Qwen2_72b_instr
-    ]
-    /// given gpt string name, return the matching model
-    static member fromApi = function
-        | "gpt-3.5-turbo" -> Some Gpt35T
-        | "gpt-4" -> Some Gpt4
-        | "gpt-4-turbo" -> Some Gpt4T
-        | "gpt-4o" -> Some Gpt4o
-        | "gpt-4o-mini" -> Some Gpt4o_mini
-        | "o1-preview" -> Some O1_preview
-        | "o1-mini" -> Some O1_mini
-        // TogetherAI
-        | "meta-llama/Llama-3-70b-chat-hf" -> Some LLama3_70b
-        | "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" -> Some LLama31_70b
-        | "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" -> Some LLama31_8b
-        | "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" -> Some LLama31_405b
-        | "Qwen/Qwen2-72B-Instruct" -> Some Qwen2_72b_instr
-        // Groq
-        | "llama-3.1-405b-reasoning" -> Some LLama31_405b
-        | "llama-3.1-70b-versatile" -> Some LLama31_70b
-        // Lepton
-        | "llama3-1-405b" -> Some LLama31_405b
-        | "llama3-1-70b" -> Some LLama31_70b
-        | _ -> None
+/// unique identifier for a model
+type ModelId = string
+
+type GptModel = {
+    /// get the API key
+    authToken: unit -> string
+    /// render the URL for the modelId
+    baseUrl: string
+    /// model name in URLs
+    id: string
+    /// descriptive name
+    name: string
+    provider: ApiProvider
+}
+
+module OpenAI =
+    let mkApi modelId modelName =
+        {
+            authToken = fun () -> Environment.GetEnvironmentVariable "OPENAI_API_KEY"
+            baseUrl = $"https://api.openai.com/v1/{modelId}"
+            id = modelId
+            name = modelName
+            provider = OpenAI
+        }
+    let gpt4 = mkApi "gpt-4" "GPT-4"
+    let gpt4o = mkApi "gpt-4o" "GPT-4o"
+    let gpt4o_mini = mkApi "gpt-4o-mini" "GPT-4o Mini"
+    let gpt4T = mkApi "gpt-4-turbo" "GPT-4 Turbo"
+    let gpt35T = mkApi "gpt-3.5-turbo" "GPT-3.5 Turbo"
+    let o1_preview = mkApi "o1-preview" "O1 Preview"
+    let o1_mini = mkApi "o1-mini" "O1 Mini"
 
 
+
+module TogetherAI =
+    let mkApi modelId modelName =
+        {
+            authToken = fun () -> Environment.GetEnvironmentVariable "TOGETHERAI_API_KEY"
+            baseUrl = $"https://api.together.xyz/v1/{modelId}"
+            id = modelId
+            name = modelName
+            provider = TogetherAI
+        }
+(*
+    let llama31_405b = api "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+    let llama31_70b = api "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    let llama31_8b = api "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+    let llama3_70b = api "meta-llama/Llama-3-70b-chat-hf"
+    let qwen2_72b_instr = api "Qwen/Qwen2-72B-Instruct"
+*)
+    let llama31_405b = mkApi "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" "LLama 3.1 405B"
+    let llama31_70b = mkApi "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" "LLama 3.1 70B"
+    let llama31_8b = mkApi "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" "LLama 3.1 8B"
+    let llama3_70b = mkApi "meta-llama/Llama-3-70b-chat-hf" "LLama 3 70B"
+    let qwen2_72b_instr = mkApi "Qwen/Qwen2-72B-Instruct" "Qwen 2 72B Instruct"
+
+
+
+module Groq =
+    let api modelId modelName =
+        {
+            authToken = fun () -> Environment.GetEnvironmentVariable "GROQ_API_KEY"
+            baseUrl = $"https://api.groq.com/openai/v1/{modelId}"
+            id = modelId
+            name = modelName
+            provider = Groq
+        }
+    let llama31_70b = api "llama-3.1-70b-versatile" "LLama 3.1 70B"
+    let llama31_405b = api "llama-3.1-405b-reasoning" "LLama 3.1 405B"
+
+module LeptonAI =
+    let api modelId modelName =
+        {
+            authToken = fun () -> Environment.GetEnvironmentVariable "LEPTON_API_KEY"
+            baseUrl = $"https://{modelId}.lepton.run/api/v1"
+            id = modelId
+            name = modelName
+            provider = Lepton
+        }
+    let llama31_70b = api "llama3-1-70b" "LLama 3.1 70B"
+    let llama31_405b = api "llama3-1-405b" "LLama 3.1 405B"
 
 type Prompt =
     | System of string

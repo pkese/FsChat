@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.0-beta1</Version>
+    <Version>0.1.0-beta2</Version>
     <IsPackable>true</IsPackable>
     <PackageId>FsChat</PackageId>
     <Authors>Peter Kese</Authors>
@@ -30,10 +30,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="8.0.301" />
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
-    <PackageReference Include="FSharp.Formatting" Version="20.0.1" />
+    <!--PackageReference Include="FSharp.Formatting" Version="20.0.1" /-->
     <PackageReference Include="FSharp.SystemTextJson" Version="1.*" />
     <PackageReference Include="TypeShape" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Markdown\FSharp.Formatting.Markdown.fsproj" />
   </ItemGroup>
 
 </Project>

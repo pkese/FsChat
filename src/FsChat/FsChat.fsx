@@ -1,5 +1,5 @@
 #if INTERACTIVE
-#load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.TableReader.fsx" "FsChat.Markdown.fsx"
+#load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.Markdown.fsx"
 #else
 namespace FsChat
 #endif
@@ -63,7 +63,7 @@ module Chat =
 type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     let mutable ctx = context |> Option.map List.ofSeq |> Option.defaultValue []
-    let mutable gptModel = model |> Option.orElseWith (fun () -> Some Gpt4o_mini)
+    let mutable gptModel = model |> Option.orElseWith (fun () -> Some OpenAI.gpt4o_mini)
     let mutable chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
 
     let fetchGpt(prompts) =
