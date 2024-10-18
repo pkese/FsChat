@@ -17,68 +17,89 @@ type TableData = {
     rows: string list list
 }
 
-let rec mkParser<'T> (fldNm: string) : (string -> obj) =
-    match shapeof<'T> with
-    | Shape.FSharpOption o ->
-        o.Element.Accept {
-            new ITypeVisitor<string -> obj> with
-                member _.Visit<'a> () =
-                    let mapper = mkParser<'a> fldNm
-                    fun (s:string) ->
-                        match s.Trim() with
-                        | "" | "N/A" | "N / A" | "/" | "-" | "--" -> box None
-                        | s ->
-                            let x = mapper s
-                            x |> unbox<'a> |> Some |> box
-        }
-    | Shape.Bool -> Convert.ToBoolean >> box
-    | Shape.Byte -> Convert.ToByte >> box
-    | Shape.Char -> Convert.ToChar >> box
-    | Shape.DateTime -> Convert.ToDateTime >> box
-    | Shape.Decimal -> Convert.ToDecimal >> box
-    | Shape.Double -> Convert.ToDouble >> box
-    | Shape.Single -> Convert.ToSingle >> box
-    | Shape.Int16 -> Convert.ToInt16 >> box
-    | Shape.Int32 -> Convert.ToInt32 >> box
-    | Shape.Int64 -> Convert.ToInt64 >> box
-    | Shape.SByte -> Convert.ToSByte >> box
-    | Shape.String -> box
-    | Shape.UInt16 -> Convert.ToUInt16 >> box
-    | Shape.UInt32 -> Convert.ToUInt32 >> box
-    | Shape.UInt64 -> Convert.ToUInt64 >> box
-    | Shape.Array s ->
-        s.Element.Accept {
-            new ITypeVisitor<string -> obj> with
-                member _.Visit<'a> () =
-                    let mapper = mkParser<'a> fldNm >> unbox<'a>
-                    fun (s:string) ->
-                        s.Split([|',';';'|]) |> Array.map mapper |> box
-        }
-    | Shape.FSharpList s ->
-        s.Element.Accept {
-            new ITypeVisitor<string -> obj> with
-                member _.Visit<'a> () =
-                    let mapper = mkParser<'a> fldNm >> unbox<'a>
-                    fun (s:string) ->
-                        [ for txt in s.Split([|',';';'|]) -> mapper txt ] |> box
-        }
-    | _ -> failwithf "Unsupported type %A for field %s" (shapeof<'T>) fldNm
+module private Parsing =
 
-let rec renderFieldMapping (colNames:ColName list) (_fldNames:FldName[]) =
-    let fldMap = _fldNames |> Seq.mapi (fun i k -> k,i) |> Map.ofSeq
-    let editDist (a:string) (b:string) =
+    let rec mkParser<'T> (fldNm: string) : (string -> obj) =
+        match shapeof<'T> with
+        | Shape.FSharpOption o ->
+            o.Element.Accept {
+                new ITypeVisitor<string -> obj> with
+                    member _.Visit<'a> () =
+                        let mapper = mkParser<'a> fldNm
+                        fun (s:string) ->
+                            match s.Trim() with
+                            | "" | "N/A" | "N / A" | "/" | "-" | "--" -> box None
+                            | s ->
+                                let x = mapper s
+                                x |> unbox<'a> |> Some |> box
+            }
+        | Shape.Bool -> Convert.ToBoolean >> box
+        | Shape.Byte -> Convert.ToByte >> box
+        | Shape.Char -> Convert.ToChar >> box
+        | Shape.DateTime -> Convert.ToDateTime >> box
+        | Shape.Decimal -> Convert.ToDecimal >> box
+        | Shape.Double -> Convert.ToDouble >> box
+        | Shape.Single -> Convert.ToSingle >> box
+        | Shape.Int16 -> Convert.ToInt16 >> box
+        | Shape.Int32 -> Convert.ToInt32 >> box
+        | Shape.Int64 -> Convert.ToInt64 >> box
+        | Shape.SByte -> Convert.ToSByte >> box
+        | Shape.String -> box
+        | Shape.UInt16 -> Convert.ToUInt16 >> box
+        | Shape.UInt32 -> Convert.ToUInt32 >> box
+        | Shape.UInt64 -> Convert.ToUInt64 >> box
+        | Shape.Array s ->
+            s.Element.Accept {
+                new ITypeVisitor<string -> obj> with
+                    member _.Visit<'a> () =
+                        let mapper = mkParser<'a> fldNm >> unbox<'a>
+                        fun (s:string) ->
+                            s.Split([|',';';'|]) |> Array.map mapper |> box
+            }
+        | Shape.FSharpList s ->
+            s.Element.Accept {
+                new ITypeVisitor<string -> obj> with
+                    member _.Visit<'a> () =
+                        let mapper = mkParser<'a> fldNm >> unbox<'a>
+                        fun (s:string) ->
+                            [ for txt in s.Split([|',';';'|]) -> mapper txt ] |> box
+            }
+        | _ -> failwithf "Unsupported type %A for field %s" (shapeof<'T>) fldNm
+
+    let mkMemberReader (fldName:string) (shape : IShapeMember<'DeclaringType>) =
+        shape.Accept { new IMemberVisitor<'DeclaringType, string -> obj> with
+            member _.Visit (shape : ShapeMember<'DeclaringType, 'Field>) =
+                let fldParser = mkParser<'Field>(fldName)
+                fldParser }
+
+
+/// Try to map field names to column names, returning a list of (column name, field name) pairs
+/// Use edit-distance algorithm to find the best match for each field name
+let rec private renderFieldMapping (colNames:ColName list) (_fldNames:FldName[]) =
+    let fldMap =
+        Map.ofArray [| for i,fld in Array.indexed _fldNames -> fld, i |]
+    let spaces = Set.ofSeq " -_.,"
+    let editDisance (a:string) (b:string) =
         let m = a.Length
         let n = b.Length
         let d = Array2D.zeroCreate (m + 1) (n + 1)
-        for i in 0..m do
-            d.[i, 0] <- i
-        for j in 0..n do
-            d.[0, j] <- j
+        for i in 0..m do d[i, 0] <- i
+        for j in 0..n do d[0, j] <- j
         for j in 1..n do
             for i in 1..m do
-                let cost = if a.[i - 1] = b.[j - 1] then 0 else 1
-                d.[i, j] <- System.Math.Min (System.Math.Min (d.[i - 1, j] + 1, d.[i, j - 1] + 1), d.[i - 1, j - 1] + cost)
-        d.[m, n]
+                let cost =
+                    let x, y = a[i-1], b[j-1]
+                    if x = y then 0
+                    elif Char.ToUpper x = Char.ToUpper y then 1
+                    elif spaces.Contains x && spaces.Contains y then 1
+                    elif spaces.Contains x || spaces.Contains y then 2
+                    else 10
+                d[i, j] <-
+                    min
+                        (min (d[i - 1, j] + 1) (d[i, j - 1] + 1))
+                        (d[i - 1, j - 1] + cost)
+        d[m, n]
+
     let rec mapToIndex (fldMap: Map<FldName,int>) (colNames:ColName list) =
         match colNames with
         | [] when not fldMap.IsEmpty ->
@@ -94,16 +115,10 @@ let rec renderFieldMapping (colNames:ColName list) (_fldNames:FldName[]) =
         | colName :: rest ->
             let bestMatch =
                 fldMap
-                |> Seq.minBy (fun kv -> editDist kv.Key colName)
+                |> Seq.minBy (fun kv -> editDisance kv.Key colName)
             let fldName, idx = bestMatch.Key, bestMatch.Value
             (colName,Some (fldName,idx)) :: mapToIndex (fldMap.Remove fldName) rest
     mapToIndex fldMap colNames
-
-let mkMemberReader (fldName:string) (shape : IShapeMember<'DeclaringType>) =
-   shape.Accept { new IMemberVisitor<'DeclaringType, string -> obj> with
-       member _.Visit (shape : ShapeMember<'DeclaringType, 'Field>) =
-           let fldParser = mkParser<'Field>(fldName)
-           fldParser }
 
 
 let readTableRecords<'T> (table: TableData) =
@@ -118,7 +133,7 @@ let readTableRecords<'T> (table: TableData) =
                 match fld with
                 | Some (fldName, idx) ->
                     let fldShape = r.Fields[idx]
-                    let fldParser = mkMemberReader fldName fldShape
+                    let fldParser = Parsing.mkMemberReader fldName fldShape
                     fun (cell:string) ->
                         scratchpad[idx] <- fldParser cell
                 | None -> fun _ -> ())
@@ -147,4 +162,4 @@ let parseTableAs<'T>(table: TableData) : 'T =
                     let records = readTableRecords<'R> table
                     [| for r in records -> r |] |> box :?> 'T
         }
-    | _ -> failwithf "Unsupported type %A (only lists and arrays are accepted)" (shapeof<'T>)
+    | _ -> failwithf "Unsupported type %A (only F# lists and arrays are accepted)" (shapeof<'T>)
