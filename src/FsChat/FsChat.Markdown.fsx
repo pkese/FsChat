@@ -1,6 +1,7 @@
 #if INTERACTIVE
 //
-#r "nuget: FSharp.Formatting, 20.0.1"
+//#r "nuget: FSharp.Formatting, 20.0.1"
+#r "../../submodules/FSharp.Formatting/src/FSharp.Formatting.Markdown/bin/Debug/netstandard2.1/FSharp.Formatting.Markdown.dll"
 #load "FsChat.TableReader.fsx"
 #else
 module FsChat.Markdown

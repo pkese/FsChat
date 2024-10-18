@@ -1,5 +1,5 @@
-#r "nuget: TypeShape, 10.0.0"
 #if INTERACTIVE
+#r "nuget: TypeShape, 10.0.0"
 #else
 module FsChat.TableReader
 #endif

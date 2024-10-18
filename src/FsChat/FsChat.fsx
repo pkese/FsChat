@@ -1,4 +1,5 @@
 #if INTERACTIVE
+#r "nuget: TypeShape, 10.0.0"
 #load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.Markdown.fsx"
 #else
 namespace FsChat
