@@ -27,4 +27,18 @@ let resp = chat.send [
     // or if it will start a new table with the same headers
 ]
 
-printfn "\nResult: %A" resp.result
+type Eurovision = {
+    year: int
+    country: string
+    artist: string option
+    song: string option
+    // ^ notice: it's not 'Song title' like in teble
+    // We find closest string using Levenshtein edit distance.
+}
+
+resp.ParseTableAs<Eurovision[]>()
+|> printfn "%A"
+
+//printfn "\nResult: %A" resp.result
+
+

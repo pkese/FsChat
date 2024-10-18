@@ -2,12 +2,16 @@
 //
 //#r "nuget: FSharp.Formatting, 20.0.1"
 #r "../../submodules/FSharp.Formatting/src/FSharp.Formatting.Markdown/bin/Debug/netstandard2.1/FSharp.Formatting.Markdown.dll"
+#r "../../submodules/FSharp.Formatting/src/FSharp.Formatting.Markdown/bin/Debug/netstandard2.1/FSharp.Formatting.Common.dll"
 #load "FsChat.TableReader.fsx"
 #else
 module FsChat.Markdown
-open FsChat.TableReader
 #endif
 
+open FSharp.Formatting.Markdown
+open FSharp.Formatting.Common
+
+open FsChat.TableReader
 open FSharp.Formatting.Markdown
 
 /// Extract text from MarkdownParagraphs (e.g. table cells)

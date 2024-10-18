@@ -32,7 +32,7 @@ module OpenAI =
     let mkApi modelId modelName =
         {
             authToken = fun () -> Environment.GetEnvironmentVariable "OPENAI_API_KEY"
-            baseUrl = $"https://api.openai.com/v1/{modelId}"
+            baseUrl = $"https://api.openai.com/v1"
             id = modelId
             name = modelName
             provider = OpenAI
@@ -51,7 +51,7 @@ module TogetherAI =
     let mkApi modelId modelName =
         {
             authToken = fun () -> Environment.GetEnvironmentVariable "TOGETHERAI_API_KEY"
-            baseUrl = $"https://api.together.xyz/v1/{modelId}"
+            baseUrl = $"https://api.together.xyz/v1"
             id = modelId
             name = modelName
             provider = TogetherAI
@@ -75,7 +75,7 @@ module Groq =
     let api modelId modelName =
         {
             authToken = fun () -> Environment.GetEnvironmentVariable "GROQ_API_KEY"
-            baseUrl = $"https://api.groq.com/openai/v1/{modelId}"
+            baseUrl = $"https://api.groq.com/openai/v1"
             id = modelId
             name = modelName
             provider = Groq

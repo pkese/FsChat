@@ -130,6 +130,15 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     member this.model with get() = gptModel.Value and set(m) = gptModel <- Some m
 
+    member this.parseTableAs<'T>() : 'T =
+        ctx
+        |> Seq.choose (function Assistant text -> Some text  | _ -> None)
+        |> Seq.last
+        |> FSharp.Formatting.Markdown.Markdown.Parse
+        |> FsChat.Markdown.getTables
+        |> List.last
+        |> FsChat.TableReader.parseTableAs<'T>
+
 
 (*
 //let chat = Chat(Gpt4o)
