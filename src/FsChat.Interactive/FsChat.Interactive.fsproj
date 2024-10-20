@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.0-beta1</Version>
+    <Version>0.1.0-beta2</Version>
     <IsPackable>true</IsPackable>
     <PackageDescription>FsChat support for dotnet-interactive</PackageDescription>
     <PackageTags>polyglot notebook dotnet interactive FsChat GPT AI</PackageTags>
@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FsChat\FsChat.fsproj" />
+    <ProjectReference Include="..\FsChat.Cache\FsChat.Cache.fsproj" />
   </ItemGroup>
 
 

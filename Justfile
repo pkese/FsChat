@@ -29,8 +29,9 @@ nupkg:
     sudo chown -R $(whoami) {{PKGS_DIR}}
 
 nuget-local: nupkg
-    mkdir {{PKGS_DIR}}/unzipped
-    cd {{PKGS_DIR}}/unzipped && unzip ../fschat.interactive/{{FSCHAT_INTERACTIVE_VER}}/fschat.interactive.{{FSCHAT_INTERACTIVE_VER}}.nupkg
+    mkdir -p {{PKGS_DIR}}/unzipped/fschat {{PKGS_DIR}}/unzipped/fschat.interactive
+    cd {{PKGS_DIR}}/unzipped/fschat.interactive && unzip ../../fschat.interactive/{{FSCHAT_INTERACTIVE_VER}}/fschat.interactive.{{FSCHAT_INTERACTIVE_VER}}.nupkg
+    cd {{PKGS_DIR}}/unzipped/fschat && unzip ../../fschat/{{FSCHAT_INTERACTIVE_VER}}/fschat.{{FSCHAT_INTERACTIVE_VER}}.nupkg
     # delete it from nuget cache
     rm -rf ~/.nuget/packages/fschat ~/.nuget/packages/fschat.interactive
 

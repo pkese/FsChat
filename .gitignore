@@ -7,3 +7,5 @@ nuget.local/
 .fake
 
 notebooks/
+
+*.sqlite

@@ -40,7 +40,7 @@ let testStream() =
         ]
         *)
 
-        let chunks = fetchStreaming (prompt |> Seq.map Prompt.toMsg, selectedModel)
+        let chunks = fetchStreaming (prompt, selectedModel)
         for chunk in chunks do
             match chunk with
             | Role role -> yield sprintf "\nRole: %s\n" role

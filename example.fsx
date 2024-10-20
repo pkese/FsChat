@@ -1,14 +1,17 @@
 #!/usr/bin/env -S dotnet fsi --langversion:preview
 
 #r "nuget: dotenv.net, 3.2.0"
-#load "src/FsChat/FsChat.fsx"
-// or #r "nuget: FsChat 0.1.0-beta1"
+// #load "src/FsChat/FsChat.fsx"
+#i "nuget: /home/peter/work/FsChat/nuget.local"
+#r "nuget: FsChat, 0.1.0-beta2"
 
 open dotenv.net
 open FsChat
 open FsChat.Types
 
 DotEnv.Load(DotEnvOptions(envFilePaths=[".env"]))
+
+Chat.defaultCache <- Some <| FsChat.Cache.SqliteCache()
 
 let chat = Chat(OpenAI.gpt4o_mini)
 
@@ -35,6 +38,8 @@ type Eurovision = {
     // ^ notice: it's not 'Song title' like in teble
     // We find closest string using Levenshtein edit distance.
 }
+
+printfn "Response: %A" resp
 
 resp.ParseTableAs<Eurovision[]>()
 |> printfn "%A"

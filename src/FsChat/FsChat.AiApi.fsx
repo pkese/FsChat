@@ -98,7 +98,6 @@ type ChatCompletionChunk = {
     |} option
 }
 
-
 type PromptMsg = {
     role: string
     content: string
@@ -143,32 +142,25 @@ with
         | s -> s
 
 
-
-let completionRequest (model:GptModel) (prompt: PromptMsg seq) = {|
-    model = model.id
-    messages = prompt
-    user = "glimpse.dev"
-    seed = 123
-    stream = true
-    n = 1 // stream one token at a time
-    //stream_options = {| include_usage = true |}
-    temperature = 0.0 // 0.0-1.0
-    max_tokens = 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
-|}
-
-let fetchStreaming =
+let fetchStreamingCompletion =
 
     let client = new HttpClient()
     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"))
     client.DefaultRequestHeaders.TransferEncoding.Add(new TransferCodingHeaderValue("chunked"))
     //client.DefaultRequestHeaders.AcceptEncoding.Clear()
 
-    fun (messages: PromptMsg seq, model: GptModel option) -> taskSeq {
-        let model = model |> Option.defaultValue defaultModel
+    fun (completion: CompletionRequest) -> taskSeq {
+        let model = completion.model
         try
             use request = new HttpRequestMessage(HttpMethod.Post, $"{model.baseUrl}/chat/completions")
             request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", model.authToken())
-            let requestMsg = messages |> completionRequest model
+            let requestMsg = {|
+                completion with
+                    model = model.id
+                    messages = completion.messages |> Seq.map Prompt.toMsg
+                    stream = true
+                    n = 1
+            |}
             use content = Json.JsonContent.Create(requestMsg, options=Json.options)
             request.Content <- content
             request.Options.Set(new HttpRequestOptionsKey<bool>("stream"), true)
@@ -265,3 +257,19 @@ let fetchStreaming =
         with
         | ex -> yield Err (sprintf "Exception: %s" ex.Message)
     }
+
+let fetchStreaming (prompt: Prompt list, model: GptModel option) =
+    let model = model |> Option.defaultValue defaultModel
+    let completion = {
+        model = model
+        messages = prompt
+        user = Some "glimpse.dev"
+        seed = Some 123
+        stream = true
+        n = 1 // stream one token at a time
+        //stream_options = {| include_usage = true |}
+        temperature = Some 0.0 // 0.0-1.0
+        max_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+    }
+
+    fetchStreamingCompletion completion

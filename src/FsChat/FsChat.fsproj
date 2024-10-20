@@ -21,9 +21,14 @@
     <!--PackageReadmeFile>../../README.md</PackageReadmeFile-->
   </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="FsChat.Types.fsx" />
     <Compile Include="FsChat.AiApi.fsx" />
+    <Compile Include="FsChat.Cache.fs" />
     <Compile Include="FsChat.TableReader.fsx" />
     <Compile Include="FsChat.Markdown.fsx" />
     <Compile Include="FsChat.fsx" />
@@ -33,11 +38,27 @@
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
     <!--PackageReference Include="FSharp.Formatting" Version="20.0.1" /-->
     <PackageReference Include="FSharp.SystemTextJson" Version="1.*" />
+    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
     <PackageReference Include="TypeShape" Version="10.0.0" />
+    <PackageReference Include="Dapper.FSharp" Version="4.9.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Markdown\FSharp.Formatting.Markdown.fsproj" />
+    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Common\FSharp.Formatting.Common.fsproj">
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <IncludeAssets>FSharp.Formatting.Common.dll</IncludeAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Markdown\FSharp.Formatting.Markdown.fsproj">
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <IncludeAssets>FSharp.Formatting.Markdown.dll</IncludeAssets>
+    </ProjectReference>
   </ItemGroup>
+
+  <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+    </ItemGroup>
+  </Target>
 
 </Project>

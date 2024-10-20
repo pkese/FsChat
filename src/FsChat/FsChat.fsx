@@ -12,50 +12,54 @@ open FSharp.Control
 open FsChat.Types
 open FsChat.AiApi
 
-type IChatRenderer =
-    abstract member Create: unit -> (GptChunk -> unit)
+[<AutoOpen>]
+module Renderers =
 
-//type ChunkRenderer = unit -> GptChunk -> unit
+    type IChatRenderer =
+        abstract member Create: unit -> (GptChunk -> unit)
 
-type StdoutRenderer() =
-    let formatChunk = function
-        | Role role -> sprintf "\nRole: %s\n" role
-        | Preamble text
-        | Chunk text -> text
-        | Finished (reason, stats) -> sprintf "\n\nFinished in %.2fs: `%A` @ %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
-        | Err err -> sprintf "\nError: %s\n" err
+    type StdoutRenderer() =
+        let formatChunk = function
+            | Role role -> sprintf "\nRole: %s\n" role
+            | Preamble text
+            | Chunk text -> text
+            | Finished (reason, stats) -> sprintf "\n\nFinished in %.2fs: `%A` @ %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
+            | Err err -> sprintf "\nError: %s\n" err
 
-    interface IChatRenderer with
-        member this.Create() =
-            fun chunk ->
-                formatChunk chunk
-                |> Console.Out.Write
+        interface IChatRenderer with
+            member this.Create() =
+                fun chunk ->
+                    formatChunk chunk
+                    |> Console.Out.Write
 
-type NoRenderer() =
-    interface IChatRenderer with
-        member this.Create() = fun _ -> ()
+    type NoRenderer() =
+        interface IChatRenderer with
+            member this.Create() = fun _ -> ()
 
-type ChatResponse = {
-    role: string option
-    text: string
-    result: Result<FinishReason*GptStats, string>
-} with
-    member this.IsSuccess = this.result |> Result.isOk
-    member this.Tables with get() =
-        this.text
-        |> FsChat.Markdown.parse
-        |> FsChat.Markdown.getTables
+[<AutoOpen>]
+module ResponseExtensions =
+    // add extensions to parse tables
+    type ChatResponse with
+        member this.IsSuccess = this.result |> Result.isOk
+        member this.Tables with get() =
+            this.text
+            |> FsChat.Markdown.parse
+            |> FsChat.Markdown.getTables
 
-    member this.ParseTableAs<'T>() : 'T =
-        this.Tables
-        |> List.last
-        |> FsChat.TableReader.parseTableAs<'T>
+        member this.ParseTableAs<'T>() : 'T =
+            this.Tables
+            |> List.last
+            |> FsChat.TableReader.parseTableAs<'T>
 
+
+// static defaults
 module Chat =
     /// <summary>Default renderer used by <see cref="Chat"/> instances</summary>
     /// <remarks>Can be replaced by setting <c>Chat.defaultRenderer <- NoRenderer()</c></remarks>
     /// <remarks>`FsChat.Interactive` replaces this with <see cref="NotebookRenderer"/>NotebookRenderer</see></remarks>
     let mutable defaultRenderer : IChatRenderer = StdoutRenderer()
+    let mutable defaultCache : ICompletionCache option = None
+    let mutable defaultUser : string option = None
 
 /// <summary>Chat model</summary>
 /// <param name="model">GPT model to use</param>
@@ -64,43 +68,76 @@ module Chat =
 type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
 
     let mutable ctx = context |> Option.map List.ofSeq |> Option.defaultValue []
-    let mutable gptModel = model |> Option.orElseWith (fun () -> Some OpenAI.gpt4o_mini)
+    let mutable gptModel = model |> Option.defaultValue OpenAI.gpt4o_mini
     let mutable chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
+    let mutable cache = Chat.defaultCache
+    let mutable seed = Option<int>.None
+    let mutable max_tokens = Option<int>.None
+    let mutable temperature = Some 0.0
+    let mutable user = Chat.defaultUser
 
-    let fetchGpt(prompts) =
+
+    let fetchGpt(prompts) = task {
         let render = chunkRenderer.Create()
-        taskSeq {
-            let chunks = fetchStreaming (prompts |> Seq.map Prompt.toMsg, gptModel)
-            let text = StringBuilder()
-            let mutable role = None
+        //let messages = prompts |> Seq.map Prompt.toMsg
+        let completionRq = {
+            model = gptModel
+            messages = prompts
+            user = user
+            seed = seed
+            stream = true
+            n = 1
+            temperature = temperature
+            max_tokens = max_tokens
+        }
+        let cacheKey = { url=gptModel.baseUrl; tag=None; completion=completionRq }
+        let! resp = task {
+            let! cached =
+                match cache with
+                | Some c -> c.TryGetCompletion cacheKey
+                | None -> Task.FromResult None
+            match cached with
+            | Some resp ->
+                render (Chunk resp.text)
+                return [ resp ]
+            | None ->
+                return!
+                    taskSeq {
+                        let chunks = fetchStreamingCompletion completionRq
+                        let text = StringBuilder()
+                        let mutable role = None
 
-            let buildResponse result = {
-                role = role
-                text = text.ToString()
-                result = result
-            }
-            for chunk in chunks do
-                render chunk |> ignore
-                match chunk with
-                | Role r -> role <- Some r
-                | Preamble s
-                | Chunk s -> text.Append(s) |> ignore
-                | Finished (reason, stats) -> yield buildResponse (Ok(reason, stats))
-                | Err err -> yield buildResponse (Error err)
+                        let buildResponse result = {
+                            role = role
+                            text = text.ToString()
+                            result = result
+                        }
+                        for chunk in chunks do
+                            render chunk |> ignore
+                            match chunk with
+                            | Role r -> role <- Some r
+                            | Preamble s
+                            | Chunk s -> text.Append(s) |> ignore
+                            | Finished (reason, stats) -> yield buildResponse (Ok(reason, stats))
+                            | Err err -> yield buildResponse (Error err)
+                    }
+                    |> TaskSeq.toListAsync
         }
-        |> TaskSeq.toListAsync
-        |> fun (results) -> task {
-            let! results = results
-            match results with
-            | [] -> return { role = None; text = ""; result = Error "No results" }
-            | [r] ->
-                //printfn "Result: %A" r.result
-                match r.result with
-                | Ok _ -> ctx <- (prompts @ [ Assistant r.text ])
-                | Error err -> ()
-                return r
-            | results -> return { role = None; text = ""; result = Error $"Expected a single result, got %d{results.Length}: %A{results}" }
-        }
+
+        match resp with
+        | [] -> return { role = None; text = ""; result = Error "No results" }
+        | [r] ->
+            //printfn "Result: %A" r.result
+            match r.result with
+            | Ok (reason,stats) ->
+                ctx <- (prompts @ [ Assistant r.text ])
+                match cache, reason with
+                | Some cache, FinishReason.Stop -> do! cache.PutCompletion cacheKey r
+                | _ -> ()
+            | Error err -> ()
+            return r
+        | results -> return { role = None; text = ""; result = Error $"Expected a single result, got %d{results.Length}: %A{results}" }
+    }
 
     let fetch prompts =
         try
@@ -128,7 +165,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
             | h::t -> h::loop t
         ctx <- loop ctx
 
-    member this.model with get() = gptModel.Value and set(m) = gptModel <- Some m
+    member this.model with get() = gptModel and set(m) = gptModel <- m
 
     member this.parseTableAs<'T>() : 'T =
         ctx
