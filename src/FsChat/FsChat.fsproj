@@ -1,12 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
-
   <PropertyGroup>
     <Version>0.1.0-beta2</Version>
     <IsPackable>true</IsPackable>
@@ -17,14 +15,13 @@
     <PackageTags>dotnet FsChat GPT AI chat</PackageTags>
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <RepositoryUrl>https://github.com/pkese/FsChat</RepositoryUrl>
-    <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn><!-- dll outside of lib/ folder -->
+    <NoWarn>$(NoWarn);NU5100;VSTHRD002</NoWarn>
+    <!-- dll outside of lib/ folder -->
     <!--PackageReadmeFile>../../README.md</PackageReadmeFile-->
   </PropertyGroup>
-
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="FsChat.Types.fsx" />
     <Compile Include="FsChat.AiApi.fsx" />
@@ -32,8 +29,8 @@
     <Compile Include="FsChat.TableReader.fsx" />
     <Compile Include="FsChat.Markdown.fsx" />
     <Compile Include="FsChat.fsx" />
+    <!--Compile Include="FsChat.CompExpr.fsx" /-->
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
     <!--PackageReference Include="System.Text.Json" Version="[9.0.0-rc.2.24473.5, 9.0.0)" /-->
@@ -44,7 +41,6 @@
     <PackageReference Include="Dapper.FSharp" Version="4.9.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Common\FSharp.Formatting.Common.fsproj">
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
@@ -55,11 +51,9 @@
       <IncludeAssets>FSharp.Formatting.Markdown.dll</IncludeAssets>
     </ProjectReference>
   </ItemGroup>
-
   <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
     <ItemGroup>
       <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
     </ItemGroup>
   </Target>
-
 </Project>

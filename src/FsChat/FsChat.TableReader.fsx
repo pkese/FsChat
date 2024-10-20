@@ -177,4 +177,6 @@ let parseTableAs<'T>(table: TableData) : 'T =
                     let records = readTableRecords<'R> table
                     [| for r in records -> r |] |> box :?> 'T
         }
-    | _ -> failwithf "Unsupported type %A (only F# lists and arrays are accepted)" (shapeof<'T>)
+    | _ ->
+        let typ = typeof<'T>.Name
+        failwithf $"Can't parse table into <{typ}>: did you want <{typ}[]> or <{typ} list>?"

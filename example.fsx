@@ -25,6 +25,9 @@ let resp = chat.send [
         | Year | Country | Artist | Song title |
         | :--- | :--- | :--- | :--- |
     """
+    Temperature 0.0
+    MaxTokens 1000
+    Seed 0
     // we're trying here if it will complete the started table
     // (render just the data rows as instructed)
     // or if it will start a new table with the same headers

@@ -15,7 +15,6 @@ open Dapper.FSharp
 open Dapper.FSharp.SQLite
 
 open FsChat.Types
-//open FsChat.AiApi
 
 Dapper.FSharp.SQLite.OptionTypes.register()
 
@@ -42,17 +41,9 @@ let dedent (s:string) =
                     else slice[i][minIndent..]
         String.Join("\n", lines)
 
-let sql = dedent
+let private sql = dedent
 
-let jsonSerializerOptions =
-    JsonFSharpOptions.Default()
-        .WithUnionTagCaseInsensitive()
-        .WithUnionExternalTag()
-        .WithUnionUnwrapSingleFieldCases()
-        .WithSkippableOptionFields()
-        .ToJsonSerializerOptions()
-
-let tables = [
+let private migrations = [
 
     "completions", sql """
     CREATE TABLE IF NOT EXISTS completions (
@@ -78,14 +69,16 @@ let tables = [
         durationMs INT NOT NULL
     ) STRICT
     """
+
     "completions_index", sql """
     CREATE INDEX IF NOT EXISTS completion_idx_hash ON completions ( msgHash );
     """
+
 ]
 
 [<CLIMutable>]
-type CompletionTable = {
-    msgHash: uint64
+type private CompletionTable = {
+    msgHash: int64
     tagKey: string option
     tagValue: string option
     url: string
@@ -105,10 +98,10 @@ type CompletionTable = {
     durationMs: int
 }
 
-let completionTable = table'<CompletionTable> "completions"
+let private completionTable = table'<CompletionTable> "completions"
 
 [<CLIMutable>]
-type CompletionSqlResponse = {
+type private CompletionSqlResponse = {
     messages: string
     temperature: float option
     role: string option
@@ -120,17 +113,40 @@ type CompletionSqlResponse = {
     durationMs: int
 }
 
-let promptHash (prompts:Prompt seq) =
+[<RequireQualifiedAccess>]
+type private DtoMessage =
+    | user of string
+    | assistant of string
+    | system of string
+with
+    static member fromMsg = function
+        | { role=Role.user; content=s } -> user s
+        | { role=Role.assistant; content=s } -> assistant s
+        | { role=Role.system; content=s } -> system s
+    static member toMsg = function
+        | user s -> { role=Role.user; content=s }
+        | assistant s -> { role=Role.assistant; content=s }
+        | system s -> { role=Role.system; content=s }
+
+let private hashSerializerOptions =
+    JsonFSharpOptions.Default()
+        .WithUnionTagCaseInsensitive()
+        .WithUnionExternalTag()
+        .WithUnionUnwrapSingleFieldCases()
+        .WithSkippableOptionFields()
+        .ToJsonSerializerOptions()
+
+
+let private hashMessages (messages:Msg seq) =
     let hash = IO.Hashing.XxHash64()
-    for p in prompts do
+    for p in messages do
         let s =
             match p with
-            | User s -> hash.Append [|1uy|]; s
-            | Assistant s -> hash.Append [|2uy|]; s
-            | System s -> hash.Append [|3uy|]; s
-            | Template t -> failwith "Prompts should be pre-rendered at this point"
+            | { role=Role.user; content=s } -> hash.Append [|1uy|]; s
+            | { role=Role.assistant; content=s } -> hash.Append [|2uy|]; s
+            | { role=Role.system; content=s } -> hash.Append [|3uy|]; s
         hash.Append(Text.Encoding.UTF8.GetBytes(s))
-    hash.GetCurrentHashAsUInt64()
+    hash.GetCurrentHashAsUInt64() |> int64 |> abs
 
 type SqliteCache(?dbFile:string) =
     let conn =
@@ -144,7 +160,7 @@ type SqliteCache(?dbFile:string) =
         let connStr = $"Data Source={dbFile}"
         let conn = new SqliteConnection(connStr)
         conn.Open()
-        for reason, sqlStatement in tables do
+        for reason, sqlStatement in migrations do
             //printfn "SQLITE>\n%s" sqlStatement
             conn.Execute(sqlStatement) |> ignore
         conn
@@ -153,7 +169,7 @@ type SqliteCache(?dbFile:string) =
         member __.TryGetCompletion (key: FsChat.Types.CompletionCacheKey) = task {
             let completion = key.completion
             let! completions =
-                let msgHash = promptHash key.completion.messages
+                let msgHash = hashMessages key.completion.messages
                 let tagKey, tagValue =
                     match key.tag with
                     | Some (k, v) -> Some k, Some v
@@ -185,8 +201,10 @@ type SqliteCache(?dbFile:string) =
                     | _ -> false
                 )
                 |> Seq.filter (fun c ->
-                    let msg = JsonSerializer.Deserialize<Prompt list>(c.messages, jsonSerializerOptions)
-                    msg = completion.messages
+                    let msgs =
+                        JsonSerializer.Deserialize<DtoMessage[]>(c.messages, hashSerializerOptions)
+                        |> Array.map DtoMessage.toMsg
+                    msgs = completion.messages
                 )
                 |> Seq.map (fun resp ->
                     {
@@ -202,11 +220,11 @@ type SqliteCache(?dbFile:string) =
                         })
                     })
                 |> Seq.tryHead
-
         }
 
         member __.PutCompletion (key:CompletionCacheKey) (resp:ChatResponse) = task {
             let completion = key.completion
+            let dtoMessages = [| for m in completion.messages -> DtoMessage.fromMsg m |]
             let stats =
                 match resp.result with
                 | Ok (FinishReason.Stop, stats) -> stats
@@ -216,12 +234,12 @@ type SqliteCache(?dbFile:string) =
                 insert {
                     into completionTable
                     value {
-                        msgHash = promptHash completion.messages
+                        msgHash = hashMessages completion.messages
                         tagKey = key.tag |> Option.map fst
                         tagValue = key.tag |> Option.map snd
                         url = key.url
                         model = key.completion.model.id
-                        messages = JsonSerializer.Serialize(completion.messages, jsonSerializerOptions)
+                        messages = JsonSerializer.Serialize(dtoMessages, hashSerializerOptions)
                         seed = completion.seed
                         temperature = completion.temperature
                         max_tokens = completion.max_tokens

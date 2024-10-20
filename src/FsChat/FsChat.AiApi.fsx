@@ -98,50 +98,6 @@ type ChatCompletionChunk = {
     |} option
 }
 
-type PromptMsg = {
-    role: string
-    content: string
-}
-
-type Prompt
-with
-    static member cleanContent (s:string) =
-        let mutable lines = s.Replace("\r", "").Split("\n")
-        while lines.Length>0 && lines[0].Trim() = "" do
-            lines <- lines[1..]
-        while lines.Length>0 && lines[lines.Length-1].Trim() = "" do
-            lines <- lines[..lines.Length-2]
-        let countSpaces (line:string) =
-            let rec cnt i =
-                if i < line.Length && line.[i] = ' ' then
-                    cnt (i+1)
-                else
-                    i
-            cnt 0
-        let unindentSize = lines |> Seq.map countSpaces |> Seq.min
-        if unindentSize > 0 then
-            lines <- [| for l in lines -> l[unindentSize..] |]
-        if lines[lines.Length-1].EndsWith('|') then
-            lines[lines.Length-1] <- lines[lines.Length-1] + "\n"
-        lines |> String.concat "\n"
-
-    static member toMsg = function
-        | System s -> { role = "system"; content = Prompt.cleanContent s }
-        | User s -> { role = "user"; content = Prompt.cleanContent s }
-        | Assistant s -> { role = "assistant"; content = Prompt.cleanContent s }
-        | Template f -> failwith "Prompts should be pre-rendered at this point"
-    static member renderTemplate (ctx:Map<string,string>) = function
-        | Template f ->
-            let replaceString (s:string) =
-                ctx |> Map.fold (fun (s:string) k v -> s.Replace($"{{{{{k}}}}}", v)) s
-            match f with
-            | System s -> System (replaceString s)
-            | User s -> User (replaceString s)
-            | Assistant s -> Assistant (replaceString s)
-            | Template t -> Prompt.renderTemplate ctx t
-        | s -> s
-
-
 let fetchStreamingCompletion =
 
     let client = new HttpClient()
@@ -157,7 +113,7 @@ let fetchStreamingCompletion =
             let requestMsg = {|
                 completion with
                     model = model.id
-                    messages = completion.messages |> Seq.map Prompt.toMsg
+                    messages = completion.messages
                     stream = true
                     n = 1
             |}
@@ -258,11 +214,11 @@ let fetchStreamingCompletion =
         | ex -> yield Err (sprintf "Exception: %s" ex.Message)
     }
 
-let fetchStreaming (prompt: Prompt list, model: GptModel option) =
+let fetchStreaming (messages: Msg seq, model: GptModel option) =
     let model = model |> Option.defaultValue defaultModel
     let completion = {
         model = model
-        messages = prompt
+        messages = messages |> Seq.toArray
         user = Some "glimpse.dev"
         seed = Some 123
         stream = true

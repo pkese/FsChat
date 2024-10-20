@@ -31,7 +31,7 @@ type GptModel = {
 
 
 [<AutoOpen>]
-module ApiProviders = 
+module ApiProviders =
     module OpenAI =
         let mkApi modelId modelName =
             {
@@ -99,13 +99,24 @@ module ApiProviders =
         let llama31_70b = api "llama3-1-70b" "LLama 3.1 70B"
         let llama31_405b = api "llama3-1-405b" "LLama 3.1 405B"
 
-type Prompt =
-    | System of string
-    | User of string
-    | Assistant of string
-    /// content is a template containing "text {{title}} blah {{text}}" with values being spliced in from the context
-    | Template of Prompt
+[<RequireQualifiedAccess>]
+type Role =
+    // set json name to lowercase
+    | user
+    | assistant
+    | system
 
+type Msg = {
+    role: Role
+    content: string
+}
+
+[<RequireQualifiedAccess>]
+module Msg =
+    // Active patterns
+    let (|System|_|) = function | { role=Role.system; content=s } -> Some s | _ -> None
+    let (|User|_|) = function | { role=Role.user; content=s } -> Some s | _ -> None
+    let (|Assistant|_|) = function | { role=Role.assistant; content=s } -> Some s | _ -> None
 
 type FinishReason =
     | Stop
@@ -137,7 +148,7 @@ type GptChunk =
 /// model and messages are slightly transformed
 type CompletionRequest = {
     model: GptModel
-    messages: Prompt list
+    messages: Msg[]
     user: string option
     seed: int option
     stream: bool
