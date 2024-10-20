@@ -1,5 +1,7 @@
 #if INTERACTIVE
 #r "nuget: TypeShape, 10.0.0"
+//#r "nuget: System.Text.Json, 9.0.0-rc.2.24473.5"
+#r "nuget: FSharp.SystemTextJson, 1.3.13"
 #load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.Markdown.fsx"
 #else
 namespace FsChat
@@ -7,6 +9,10 @@ namespace FsChat
 
 open System
 open System.Text
+open System.Text.Json
+open System.Text.Json.Serialization
+//open System.Text.Json.Schema
+open FSharp.SystemTextJson
 open System.Threading.Tasks
 open FSharp.Control
 open FsChat.Types
@@ -75,6 +81,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
     let mutable max_tokens = Option<int>.None
     let mutable temperature = Some 0.0
     let mutable user = Chat.defaultUser
+    let mutable responseFormat = None
 
 
     let fetchGpt(prompts) = task {
@@ -89,6 +96,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
             n = 1
             temperature = temperature
             max_tokens = max_tokens
+            response_format = responseFormat
         }
         let cacheKey = { url=gptModel.baseUrl; tag=None; completion=completionRq }
         let! resp = task {
@@ -123,6 +131,8 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
                     }
                     |> TaskSeq.toListAsync
         }
+        // clear ephemeral state
+        responseFormat <- None
 
         match resp with
         | [] -> return { role = None; text = ""; result = Error "No results" }
@@ -150,6 +160,20 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?context: Prompt seq) =
         fetch (ctx @ [User text])
     member this.send(prompts: Prompt seq) =
         fetch [ yield! ctx; yield! prompts ]
+
+(*
+    member this.response_format with set (typ:Type) =
+        let jsonSerializerOptions = JsonSerializerOptions.Default;
+        JsonFSharpOptions.Default()
+            .WithUnionTagCaseInsensitive()
+            .WithUnionExternalTag()
+            .WithUnionUnwrapSingleFieldCases()
+            .WithSkippableOptionFields()
+            .AddToJsonSerializerOptions(jsonSerializerOptions)
+
+        let schema = jsonSerializerOptions.GetJsonSchemaAsNode(typ)
+        responseFormat <- Some (schema.ToString())
+*)
 
     member this.clear() = ctx <- []
 

@@ -270,6 +270,7 @@ let fetchStreaming (prompt: Prompt list, model: GptModel option) =
         //stream_options = {| include_usage = true |}
         temperature = Some 0.0 // 0.0-1.0
         max_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+        response_format = None
     }
 
     fetchStreamingCompletion completion

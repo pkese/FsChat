@@ -54,31 +54,32 @@ let jsonSerializerOptions =
 
 let tables = [
 
-    "completion", sql """
-    CREATE TABLE IF NOT EXISTS completion (
+    "completions", sql """
+    CREATE TABLE IF NOT EXISTS completions (
         -- request
         msgHash INT,
         tagKey TEXT,
         tagValue TEXT,
         url TEXT NOT NULL,
         model TEXT NOT NULL,
-        messages JSONB NOT NULL,
+        messages TEXT NOT NULL,
         seed INT,
         temperature REAL,
         max_tokens INT,
+        response_format TEXT,
         -- response
         role TEXT,
         text TEXT NOT NULL,
         -- stats
-        created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created TEXT NOT NULL,
         actualModel TEXT NOT NULL,
         fingerprint TEXT,
         nTokens INT NOT NULL,
         durationMs INT NOT NULL
-    );
+    ) STRICT
     """
-    "completion_index", sql """
-    CREATE INDEX IF NOT EXISTS completion_idx_hash ON completion ( msgHash );
+    "completions_index", sql """
+    CREATE INDEX IF NOT EXISTS completion_idx_hash ON completions ( msgHash );
     """
 ]
 
@@ -93,6 +94,8 @@ type CompletionTable = {
     seed: int option
     temperature: float option
     max_tokens: int option
+    response_format: string option
+    //
     role: string option
     text: string
     created: DateTime
@@ -102,7 +105,7 @@ type CompletionTable = {
     durationMs: int
 }
 
-let completionTable = table'<CompletionTable> "completion"
+let completionTable = table'<CompletionTable> "completions"
 
 [<CLIMutable>]
 type CompletionSqlResponse = {
@@ -148,7 +151,6 @@ type SqliteCache(?dbFile:string) =
 
     interface ICompletionCache with
         member __.TryGetCompletion (key: FsChat.Types.CompletionCacheKey) = task {
-            let completionTable = table'<CompletionTable> "completion"
             let completion = key.completion
             let! completions =
                 let msgHash = promptHash key.completion.messages
@@ -165,11 +167,12 @@ type SqliteCache(?dbFile:string) =
                         c.tagValue = tagValue &&
                         c.url = key.url &&
                         c.model = modelName &&
-                        // c.messages
+                        // c.messages // expensive: handle later
                         c.seed = completion.seed &&
-                        // c.temperature = completion.temperature &&
+                        // c.temperature = completion.temperature && // float comparison
                         c.max_tokens = completion.max_tokens
                     )
+                    orderByDescending c.created
                 }
                 |> conn.SelectAsync<CompletionSqlResponse>
                 //|> conn.SelectAsync<CompletionTable>
@@ -203,7 +206,6 @@ type SqliteCache(?dbFile:string) =
         }
 
         member __.PutCompletion (key:CompletionCacheKey) (resp:ChatResponse) = task {
-            let completionTable = table'<CompletionTable> "completion"
             let completion = key.completion
             let stats =
                 match resp.result with
@@ -223,6 +225,7 @@ type SqliteCache(?dbFile:string) =
                         seed = completion.seed
                         temperature = completion.temperature
                         max_tokens = completion.max_tokens
+                        response_format = completion.response_format
 
                         role = resp.role
                         text = resp.text

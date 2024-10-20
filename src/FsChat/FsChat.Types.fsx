@@ -145,6 +145,7 @@ type CompletionRequest = {
     //stream_options: {| include_usage: bool |} option
     temperature: float option
     max_tokens: int option
+    response_format: string option
 }
 
 /// User visible response of FsChat.Chat
