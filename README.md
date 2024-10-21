@@ -59,8 +59,10 @@ If you have loaded **FsChat.Interactive** into a Dotnet Interactive (Polyglot) n
 
 ### Extracting Markdown tables into user defined types
 
-Define a type T and use `response.parseTableAs<T[]>()` or `response.parseTableAs<T list>()`
-to extract the table into an array of list of records:
+Define a record type T and use  
+`response.parseTableAs<T[]>()` or  
+`response.parseTableAs<T list>()`  
+to extract the Markdown table contents into an array (or list) of records:
 
 ```fsharp
 type EurovisionWinner = {
@@ -83,11 +85,9 @@ response.parseTableAs<EurovisionWinner[]>()
 ```
 Alternatively, if you didn't store the response into a variable, you can use `chat.parseTableAs<T>()`, which will parse the last response in the chat context.
 
-// ^ notice: it's not 'Song title' like in teble
-// We find closest string using Levenshtein edit distance.
-
-Notice: column names in the table and record field names don't need to match exactly:  
-in the above example, table column `Song Title` is automatically mapped into `song` field in the record.  
+Notice:  
+column names in the table and record field names don't need to match exactly:  
+in the above example, table column `Song Title` is automatically mapped into `song` field of record.  
 The parser uses Levenshtein edit distance to find the closest match.
 
 ### Mermaid charts
@@ -117,7 +117,8 @@ chat.send [
     MaxTokens 5000   // limit number of output tokens
 ]
 ````
-Hint: you'll get better results, if you prompt it with an example of chart code structure.
+Hint:  
+you'll get better results, if you prompt it with an short example of expected chart code.
 ![fschat-chart](https://github.com/user-attachments/assets/0ba9a21d-1694-4299-a99b-9e36d9aa2498)
 
 
@@ -151,12 +152,14 @@ you can enable API response caching by setting `FSCHAT_CACHE` variable in your `
 FSCHAT_CACHE="llm-cache.sqlite"
 ```
 
-FsChat will create and initialize a single-file SQLite database at the specified path  
+FsChat will create and initialize a small single-file SQLite database at the specified path on your computer  
 and start storing API responses in it.
 
 Each time a LLM API call with the same prompt configuration is made, FsChat will return response from cache.
 
 Notice that this will make your responses reproducible even if LLM random seed is not set to a fixed value.
+
+**Warning:** Jupyter notebook rendering may not work correctly with response caching enabled.
 
 ## Agent interaction
 
@@ -311,13 +314,15 @@ into the notebook context.
   - [x] simplify customization
 - [x] record examples
 - [x] add README
+- [ ] Fix Jupyter-notebook renderin of cached responses
+- [ ] Add cache tags to sqlite records
 - [ ] extract code snippets from markdown frames
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
 - [x] add API token limit
 - [x] parse tables
-- [ ] parse jsons
-- [ ] render json schemas from types
+- [ ] parse Json
+- [ ] render Json schemas from types
 - [ ] add `prompt` notebook kernel
 - [ ] Add C# support
 - [ ] Write tests
