@@ -118,7 +118,7 @@ chat.send [
 ]
 ````
 Hint:  
-you'll get better results, if you prompt it with an short example of expected chart code.
+you'll get better results, if you prompt it with a short example of expected chart code.
 ![fschat-chart](https://github.com/user-attachments/assets/0ba9a21d-1694-4299-a99b-9e36d9aa2498)
 
 
@@ -317,6 +317,8 @@ into the notebook context.
 - [ ] Fix Jupyter-notebook renderin of cached responses
 - [ ] Add cache tags to sqlite records
 - [ ] extract code snippets from markdown frames
+- [ ] parametize `parseTableAs` table cell values that map to `None`  
+      currently: `["N/A"; "N / A"; "/"; "-"; "--"]`
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
 - [x] add API token limit
