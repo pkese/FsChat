@@ -27,7 +27,7 @@ LEPTON_API_KEY=...
 
 
 ```fsharp
-#r "nuget: FsChat.Interactive, 0.1.0-beta1"
+#r "nuget: FsChat.Interactive, 0.1.0-beta2"
 #r "nuget: dotenv.net, 3.2.0"
 open dotenv.net
 DotEnv.Load(DotEnvOptions(envFilePaths=[ ".env" ]))
@@ -35,8 +35,8 @@ open FsChat
 ```
 4) Choose a GPT model and start a chat session:
 ```fsharp
-let chat = Chat(Gpt4o_mini)
-chat.send [
+let chat = Chat(OpenAi.gpt4o_mini)
+let response = chat.send [
     System """
         You're a helpful assistant that renders responses in Markdown.
         Don't include politeness phrases or excuses at the beginning of responses,
@@ -57,34 +57,106 @@ If you have loaded **FsChat.Interactive** into a Dotnet Interactive (Polyglot) n
 
 ![fschat-table](https://github.com/user-attachments/assets/773eb721-0d6f-4026-b2b6-15be9c743a78)
 
+### Extracting Markdown tables into user defined types
 
+Define a type T and use `response.parseTableAs<T[]>()` or `response.parseTableAs<T list>()`
+to extract the table into an array of list of records:
+
+```fsharp
+type EurovisionWinner = {
+    year: int
+    country: string
+    artist: string
+    song: string
+}
+
+response.parseTableAs<EurovisionWinner[]>()
+// ...returns
+[|
+  { year = 2023; country = "Sweden"; artist = Some "Loreen"; song = Some "Tattoo" }
+  { year = 2022; country = "Ukraine"; artist = Some "Kalush Orchestra"; song = Some "Stefania" }
+  { year = 2021; country = "Italy"; artist = Some "Måneskin"; song = Some "Zitti e buoni" }
+  { year = 2020; country = "No Contest"; artist = None; song = None }
+  { year = 2019; country = "Netherlands"; artist = Some "Duncan Laurence"; song = Some "Arcade" }
+  ...
+|]
+```
+Alternatively, if you didn't store the response into a variable, you can use `chat.parseTableAs<T>()`, which will parse the last response in the chat context.
+
+// ^ notice: it's not 'Song title' like in teble
+// We find closest string using Levenshtein edit distance.
+
+Notice: column names in the table and record field names don't need to match exactly:  
+in the above example, table column `Song Title` is automatically mapped into `song` field in the record.  
+The parser uses Levenshtein edit distance to find the closest match.
 
 ### Mermaid charts
 
-You can also ask GPT to render the above table as a Mermaid chart:
+You can ask LLM to analyze the above table and render it as Mermaid chart:
 ````fsharp
-chat.model <- Gpt4o // switch to a more powerful model for this task; Gpt4_mini is not very good at rendering charts
-chat.send """
-    Given the above table, render a Mermaid directed graph with:
-    - nodes: countries that won the contest (labeled with country name)
-    - edges: time sequence of wins representing how the 'trophy' moved from one country to another (labeled with year)
+chat.send [
+    Model OpenAI.gpt4o // switch to a more powerful model for this task; gpt4o_mini is not very good at rendering charts
+    User """
+        Given the above table, render a Mermaid directed graph with:
+        - nodes: countries that won the contest (labeled with country name)
+        - edges: time sequence of wins representing how the 'trophy' moved from one country to another (labeled with year)
 
-    Example:
-
-    ```mermaid
-    %%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '10px' }}}%%
-    graph LR
-        DK[Denmark]
-        AT[Austria]
-        DK -->|2014| AT
-    ```
-
-    Make sure each country appears exactly once in the graph:
-    if a country won the competition multiple times, then the country's node should have multiple incoming and outgoing edges.
-"""
+        Example:
+        ```mermaid
+        %%{init: {'theme': 'default', 'themeVariables': { 'fontSize': '10px' }}}%%
+        graph LR
+            DK[Denmark]
+            AT[Austria]
+            DK -->|2014| AT
+        ```
+        Make sure each country appears exactly once in the graph:
+        if a country won the competition multiple times, then the country's node should have multiple incoming and outgoing edges.
+    """
+    Temperature 0.0  // set LLM temperature to 0.0 to avoid hallucinations
+    Seed 42          // set a fixed random seed to make responses reproducible
+    MaxTokens 5000   // limit number of output tokens
+]
 ````
 Hint: you'll get better results, if you prompt it with an example of chart code structure.
 ![fschat-chart](https://github.com/user-attachments/assets/0ba9a21d-1694-4299-a99b-9e36d9aa2498)
+
+
+## Context state: `messages`
+
+Each chat agent maintains a context of previous interactions with LLM.  
+This context is stored in `chat.messages`:
+
+```fsharp
+chat.messages -> [
+  { role: system;    content: "You're a helpful assistant" }
+  { role: user;      content: "Say a random number" }
+  { role: assistant; content: "Sure! How about 42?" }
+  { role: user;      content: "Why did you say 42?" }
+  { role: assistant; content: "Because it’s the answer to the ultimate question of life, the universe, and everything" }
+]
+```
+When you `chat.send` a prompt, both your prompt as well as LLM response are added to context.
+
+Context can be accessed using the `chat.messages` property (it returns a C# List / F# ResizeArray of previous interactions like the example above)
+and it can be freely modified.
+
+Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last `User` prompt plus GPT's response) with `chat.undo()`.
+
+## Response caching
+
+If you wish to reduce the amount of LLM API calls while testing your prompts,  
+you can enable API response caching by setting `FSCHAT_CACHE` variable in your `.env` to a file path of your choice:
+
+```sh
+FSCHAT_CACHE="llm-cache.sqlite"
+```
+
+FsChat will create and initialize a single-file SQLite database at the specified path  
+and start storing API responses in it.
+
+Each time a LLM API call with the same prompt configuration is made, FsChat will return response from cache.
+
+Notice that this will make your responses reproducible even if LLM random seed is not set to a fixed value.
 
 ## Agent interaction
 
@@ -93,31 +165,15 @@ The result of each call to `chat.send` is a `Response` record with:
 - `result: Result<status*statistics, error_text>` some response metadata.
 
 
-### Context 
-Each chat agent has a `chat.context` which is a history of interactions with the GPT:
-```fsharp
-chat.context -> [
-    System    "You're a helpful assistant"
-    User      "Say a random number"
-    Assistant "Sure! How about 42?"
-    User      "Why did you say 42?"
-    Assistant "Because it’s “the answer to the ultimate question of life, the universe, and everything”"
-    ...
-]
-```
-Each time you `chat.send` a prompt, both the prompt and GPT's response are added to context.
-
-Context can be accessed using the `chat.context` property (it returns a list of previous interactions like the example above)
-and it can be overwritten with `chat.setContext` method.
-
-Context can also be cleared with `chat.clear()` or alternatively you can delete just the last interaction (your last `User` prompt plus GPT's response) with `chat.undo()`.
-
 
 ### Multi-agent example
-Below is an example of instatiating two agents and playing a 20 questions game betweeen them.
+
+Below is an example of instatiating 2 chat agents  
+and making them playin the 20 questions game against one another  
+by accessing `response.text`.
 
 ```fsharp
-let agent1 = Chat(model=Gpt4o_mini, context=[
+let agent1 = Chat(model=OpenAI.gpt4o_mini, prompt=[
     System """
         You're playing the 20 questions game.
         Your role is to ask 'Is it a ...' questions with Yes-or-No answers
@@ -127,7 +183,7 @@ let agent1 = Chat(model=Gpt4o_mini, context=[
     """
   ])
 
-let agent2 = Chat(model=Gpt4o_mini, context=[
+let agent2 = Chat(model=OpenAI.gpt4o_mini, prompt=[
     System """
         You're playing the 20 questions game.
         Your role is the one who thinks of a word and responds to my questions
@@ -149,7 +205,7 @@ let rec play timesLeft (text:string) =
         else
             play (timesLeft-1) assess
 
-play 20 "I have a word! Which word is it? Ask the first question."
+play 20 "Which word is it? Ask the first question."
 ```
 
 ![fschat-dialog](https://github.com/user-attachments/assets/b5f6f9e8-bf75-4ea8-9d3f-74addfca4331)
@@ -251,18 +307,17 @@ into the notebook context.
 
 
 # TODO
-- [ ] improve GptModel configuration (-beta2)
-  - [ ] simplify customization
+- [x] improve GptModel configuration (-beta2)
+  - [x] simplify customization
 - [x] record examples
 - [x] add README
 - [ ] extract code snippets from markdown frames
-- [ ] expose prompt API as F# computation expression
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
-- [ ] add API token limit
-- [ ] parse tables
+- [x] add API token limit
+- [x] parse tables
 - [ ] parse jsons
-- [ ] render json schemas
+- [ ] render json schemas from types
 - [ ] add `prompt` notebook kernel
 - [ ] Add C# support
 - [ ] Write tests

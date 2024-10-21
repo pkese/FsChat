@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FsChat.Cache\FsChat.Cache.fsproj" />
+    <ProjectReference Include="../FsChat/FsChat.fsproj" />
   </ItemGroup>
 
 

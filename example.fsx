@@ -11,7 +11,7 @@ open FsChat.Types
 
 DotEnv.Load(DotEnvOptions(envFilePaths=[".env"]))
 
-Chat.defaultCache <- Some <| FsChat.Cache.SqliteCache()
+//Chat.defaultCacheProvider <- fun () -> None
 
 let chat = Chat(OpenAI.gpt4o_mini)
 

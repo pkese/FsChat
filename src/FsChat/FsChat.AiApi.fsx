@@ -225,7 +225,7 @@ let fetchStreaming (messages: Msg seq, model: GptModel option) =
         n = 1 // stream one token at a time
         //stream_options = {| include_usage = true |}
         temperature = Some 0.0 // 0.0-1.0
-        max_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+        max_completion_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
         response_format = None
     }
 

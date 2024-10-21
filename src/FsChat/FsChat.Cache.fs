@@ -186,7 +186,7 @@ type SqliteCache(?dbFile:string) =
                         // c.messages // expensive: handle later
                         c.seed = completion.seed &&
                         // c.temperature = completion.temperature && // float comparison
-                        c.max_tokens = completion.max_tokens
+                        c.max_tokens = completion.max_completion_tokens
                     )
                     orderByDescending c.created
                 }
@@ -242,7 +242,7 @@ type SqliteCache(?dbFile:string) =
                         messages = JsonSerializer.Serialize(dtoMessages, hashSerializerOptions)
                         seed = completion.seed
                         temperature = completion.temperature
-                        max_tokens = completion.max_tokens
+                        max_tokens = completion.max_completion_tokens
                         response_format = completion.response_format
 
                         role = resp.role

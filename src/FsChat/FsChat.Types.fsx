@@ -155,7 +155,7 @@ type CompletionRequest = {
     n: int
     //stream_options: {| include_usage: bool |} option
     temperature: float option
-    max_tokens: int option
+    max_completion_tokens: int option
     response_format: string option
 }
 

@@ -58,16 +58,31 @@ module ResponseExtensions =
             |> List.last
             |> FsChat.TableReader.parseTableAs<'T>
 
+
+/// Prompt command to prepare context for Chat interaction
 type Prompt =
-    | System of string
-    | User of string
-    | Assistant of string
-    | Temperature of float
-    | MaxTokens of int
-    | Seed of int
-    | ResponseFormat of string
+    /// Add a 'system' message to Chat context
+    | System of systemMessage:string
+    /// Add a 'user' message to Chat context
+    | User of userMessage:string
+    /// Add an 'assistant' message to Chat context
+    | Assistant of assistantMessage:string
+    /// Set LLM temperature to given value (range from 0.0 to 1.0, default is 0.0)
+    | Temperature of ``LLM temperature in range from 0.0 to 1.0``:float
+    /// Limit number of tokens that LLM may return. <br/>
+    /// Default is determined by the model or API provider.
+    | MaxTokens of maxTokensToReturn:int
+    /// Set LLM seed to given value to make responses deterministic.<br/>
+    /// If not set, LLM will generate a random seed and return slightly different response each time.
+    | Seed of randomSeedInitializer:int
+    /// Set response_format to provided Json schema (API specific, currently only OpenAI supports this)
+    | ResponseFormat of jsonSchema:string
+    /// Clear all current messages from chat context
     | Clear
-    | Undo of int
+    /// Undo last n interactions (your last prompt plus assistant's last response)
+    | Undo of nInteractions:int
+    /// Select GPT model to use
+    | Model of modelToUse:GptModel
     //| ResponseType of <'T>
 
 module Prompt =
@@ -94,7 +109,7 @@ module Prompt =
     let toMsg = function
         | System s -> { role = Role.system; content = cleanContent s }
         | User s -> { role = Role.user; content = cleanContent s }
-        | Assistant s -> { role = Role.assistant; content = cleanContent s }
+        | Assistant s -> { role = Role.assistant; content = s }
         | x -> failwithf "%A is not a message" x
     let ofMsg = function
         | { role=Role.system; content=s } -> System s
@@ -109,18 +124,27 @@ module Chat =
     /// <remarks>Can be replaced by setting <c>Chat.defaultRenderer <- NoRenderer()</c></remarks>
     /// <remarks>`FsChat.Interactive` replaces this with <see cref="NotebookRenderer"/>NotebookRenderer</see></remarks>
     let mutable defaultRenderer : IChatRenderer = StdoutRenderer()
-    let mutable defaultCache : ICompletionCache option = None
+    let mutable defaultCacheProvider : unit -> ICompletionCache option =
+#if INTERACTIVE
+        fun () -> None
+#else
+        fun () ->
+            match System.Environment.GetEnvironmentVariable("FSCHAT_CACHE") with
+            | null -> None
+            | dbFile -> Some (FsChat.Cache.SqliteCache dbFile)
+#endif
     let mutable defaultApiUserName : string option = None
 
 /// <summary>Chat model</summary>
 /// <param name="model">GPT model to use</param>
 /// <param name="renderer">IChatRenderer to use (see <see cref="NotebookRenderer"/>NotebookRenderer</see>)</param>
-/// <param name="context">Initial chat prompt context, e.g. <c>[ System "You're a helpful assistant" ]</c></param>
+/// <param name="prompt">Initial chat prompt context, e.g. <c>[ System "You're a helpful assistant" ]</c></param>
+/// <param name="apiUserName">User name to use for API calls</param>
 type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUserName:string) as this =
 
     let mutable gptModel = model |> Option.defaultValue OpenAI.gpt4o_mini
     let mutable chunkRenderer : IChatRenderer = defaultArg renderer Chat.defaultRenderer
-    let mutable cache = Chat.defaultCache
+    let mutable cache = Chat.defaultCacheProvider()
     let mutable _seed = Option<int>.None
     let mutable _max_tokens = Option<int>.None
     let mutable _temperature = Some 0.0
@@ -129,7 +153,6 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
 
     let fetchGpt(msgs: Msg[]) = task {
         let render = chunkRenderer.Create()
-        //let messages = prompts |> Seq.map Prompt.toMsg
         let completionRq = {
             model = gptModel
             messages = msgs
@@ -138,7 +161,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
             stream = true
             n = 1
             temperature = _temperature
-            max_tokens = _max_tokens
+            max_completion_tokens = _max_tokens
             response_format = _responseFormat
         }
         let cacheKey = { url=gptModel.baseUrl; tag=None; completion=completionRq }
@@ -203,6 +226,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
         | ResponseFormat s -> _responseFormat <- Some s
         | Clear -> ctx.Clear()
         | Undo n -> this.undo(n)
+        | Model m -> gptModel <- m
 
     let applyOps ops = for op in ops do apply op
 
@@ -218,23 +242,32 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
         with
         | ex -> { role = None; text = ""; result = Error (ex.ToString()) }
 
+    /// Add given user prompt to chat context and call LLM API
     member this.send(text: string) =
         apply (User text)
         this.Fetch ctx
-    member this.send(op: Prompt) =
-        apply op
+    /// Add given prompt to chat context and call LLM API
+    member this.send(prompt: Prompt) =
+        apply prompt
         this.Fetch ctx
+    /// Extend chat context with provided API Messages and call LLM API
     member this.send(msgs: Msg seq) =
         ctx.AddRange msgs
         this.Fetch ctx
-    member this.send(ops: Prompt seq) =
-        applyOps ops
+    /// Extend chat context with provided prompts and call LLM API
+    member this.send(prompts: Prompt seq) =
+        applyOps prompts
         this.Fetch ctx
 
-    member this.temperature with set(t:float) = _temperature <- Some t
-    member this.max_tokens with set(t:int) = _max_tokens <- Some t
-    member this.seed with set(s:int) = _seed <- Some s
-    member this.response_format with set (json:string) = _responseFormat <- Some json
+    /// Set LLM temperature to given value (range from 0.0 to 1.0, default is 0.0)
+    member this.temperature with set(temp:float) = _temperature <- Some temp
+    /// Set LLM max_tokens to given value (default not specifiled and is determined by the model or API provider)
+    member this.max_tokens with set(nTokens:int) = _max_tokens <- Some nTokens
+    /// Set LLM seed to given value to make responses deterministic.
+    /// If not set, LLM will generate a random seed and return slightly different response each time.
+    member this.seed with set(seed:int) = _seed <- Some seed
+    /// Set response_format to provided Json schema (API specific, currently only OpenAI supports this)
+    member this.response_format with set (jsonSchema:string) = _responseFormat <- Some jsonSchema
 
 (*
     member this.response_format with set (typ:Type) =
@@ -271,8 +304,9 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
 
     member this.parseTableAs<'T>() : 'T =
         ctx
+        |> Seq.rev
         |> Seq.choose (function { role=Role.assistant; content=text } -> Some text  | _ -> None)
-        |> Seq.last
+        |> Seq.head
         |> FSharp.Formatting.Markdown.Markdown.Parse
         |> FsChat.Markdown.getTables
         |> List.last
