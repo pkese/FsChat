@@ -1,6 +1,6 @@
 
 
-# FsChat <small>- interactive programmable F# client for LLM Chat APIs</small>
+# FsChat <small>- interact with LLM Chat APIs using F#</small>
 
 **FsChat** focuses on interactivity and usability:
 - it shows straming responses in real time as they arrive,
@@ -12,9 +12,9 @@
 1) Register for an account with [OpenAI](https://platform.openai.com/settings/profile?tab=api-keys), [TogetherAI](https://api.together.xyz/settings/api-keys), [Groq](https://console.groq.com/keys) or [LeptonAI](https://dashboard.lepton.ai/)  
    to get an API key.
 
-2) Write your API key it in `.env` file.
+2) Write your API key it in `.env` file (or copy it from [.env.example](.env.example)).
 
-```bash
+```sh
 # example .env file
 OPENAI_API_KEY="<your-openai-api-key-here>"
 TOGETHERAI_API_KEY=...
