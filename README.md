@@ -68,8 +68,8 @@ to extract the Markdown table contents into an array (or list) of records:
 type EurovisionWinner = {
     year: int
     country: string
-    artist: string
-    song: string
+    artist: string option
+    song: string option
 }
 
 response.parseTableAs<EurovisionWinner[]>()
@@ -86,9 +86,11 @@ response.parseTableAs<EurovisionWinner[]>()
 Alternatively, if you didn't store the response into a variable, you can use `chat.parseTableAs<T>()`, which will parse the last response in the chat context.
 
 Notice:  
-column names in the table and record field names don't need to match exactly:  
-in the above example, table column `Song Title` is automatically mapped into `song` field of record.  
-The parser uses Levenshtein edit distance to find the closest match.
+1) Column names in the table and record field names don't need to match exactly:  
+    in the above example, table column `Song Title` is automatically mapped into `song` field of record.  
+    The parser uses Levenshtein edit distance to find the closest match.
+2) Cell values `N/A`, `N / A`, `/`, `-`, `--` are automatically mapped to `None` in the record.  
+    It is suggested to explicitely instruct LLM to write one of these values for missing data in the table.
 
 ### Mermaid charts
 
@@ -317,8 +319,8 @@ into the notebook context.
 - [ ] Fix Jupyter-notebook renderin of cached responses
 - [ ] Add cache tags to sqlite records
 - [ ] extract code snippets from markdown frames
-- [ ] parametize `parseTableAs` table cell values that map to `None`  
-      currently: `["N/A"; "N / A"; "/"; "-"; "--"]`
+- [ ] parametize `parseTableAs` table cell values that map to `None`
+  - [ ] add some form of a `startsWithN/A` option (or regex)
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
 - [x] add API token limit
