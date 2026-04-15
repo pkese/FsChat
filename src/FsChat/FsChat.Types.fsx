@@ -13,6 +13,8 @@ type ApiProvider =
     | TogetherAI
     | Groq
     | Lepton
+    | Ollama
+
 
 /// unique identifier for a model
 type ModelId = string
@@ -105,6 +107,7 @@ type Role =
     | user
     | assistant
     | system
+    //| tool
 
 type Msg = {
     role: Role
@@ -157,6 +160,7 @@ type CompletionRequest = {
     temperature: float option
     max_completion_tokens: int option
     response_format: string option
+    think: bool option
 }
 
 /// User visible response of FsChat.Chat

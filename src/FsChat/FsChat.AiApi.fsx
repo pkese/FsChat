@@ -60,6 +60,7 @@ data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190
 [<CLIMutable>]
 type ChoiceContent = {
     role: string option
+    reasoning: string option
     content: string option
     tool_calls: {|index:string; id:string; ``type``:string; ``function``:{|name:string; arguments:string|}|} list option
 }
@@ -108,7 +109,12 @@ let fetchStreamingCompletion =
     fun (completion: CompletionRequest) -> taskSeq {
         let model = completion.model
         try
-            use request = new HttpRequestMessage(HttpMethod.Post, $"{model.baseUrl}/chat/completions")
+            let url =
+                if model.baseUrl.EndsWith '/' then
+                    model.baseUrl + "chat/completions"
+                else
+                    model.baseUrl + "/chat/completions"
+            use request = new HttpRequestMessage(HttpMethod.Post, url)
             request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", model.authToken())
             let requestMsg = {|
                 completion with
@@ -116,13 +122,16 @@ let fetchStreamingCompletion =
                     messages = completion.messages
                     stream = true
                     n = 1
+                    //reasoning = {|effort="low"|}
+                    cache_salt = "123" // vLLM caching - https://github.com/vllm-project/vllm/blob/main/docs/design/prefix_caching.md
             |}
             use content = Json.JsonContent.Create(requestMsg, options=Json.options)
             request.Content <- content
             request.Options.Set(new HttpRequestOptionsKey<bool>("stream"), true)
             if false then // debug
                 let requestJson = JsonSerializer.Serialize(requestMsg, Json.options)
-                printfn "Request: %s" requestJson
+                printfn "POST %s" (request.RequestUri.ToString())
+                printfn "\n%s" requestJson
             let startedTs = DateTime.UtcNow
 
             use! response = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
@@ -227,6 +236,24 @@ let fetchStreaming (messages: Msg seq, model: GptModel option) =
         temperature = Some 0.0 // 0.0-1.0
         max_completion_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
         response_format = None
+        think = None
     }
 
     fetchStreamingCompletion completion
+
+type GptModel with
+    member this.fetchStreaming (messages: Msg seq, ?thinking: bool) =
+        let completion = {
+            model = this
+            messages = messages |> Seq.toArray
+            user = Some "glimpse.dev"
+            seed = Some 123
+            stream = true
+            n = 1 // stream one token at a time
+            //stream_options = {| include_usage = true |}
+            temperature = Some 0.0 // 0.0-1.0
+            max_completion_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+            response_format = None
+            think = thinking
+        }
+        fetchStreamingCompletion completion

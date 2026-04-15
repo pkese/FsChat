@@ -87,21 +87,20 @@ type Prompt =
 
 module Prompt =
     let cleanContent (s:string) =
-        let mutable lines = s.Replace("\r", "").Split("\n")
+        let mutable lines = s.Replace("\r", "").Trim('\n').Split("\n")
         while lines.Length>0 && lines[0].Trim() = "" do
             lines <- lines[1..]
         while lines.Length>0 && lines[lines.Length-1].Trim() = "" do
             lines <- lines[..lines.Length-2]
         let countSpaces (line:string) =
             let rec cnt i =
-                if i < line.Length && line.[i] = ' ' then
-                    cnt (i+1)
-                else
-                    i
+                if i = line.Length then None // ignore empty lines
+                elif line[i] <> ' ' then Some i // first non-blank
+                else cnt (i+1)
             cnt 0
-        let unindentSize = lines |> Seq.map countSpaces |> Seq.min
+        let unindentSize = lines |> Seq.choose countSpaces |> Seq.min
         if unindentSize > 0 then
-            lines <- [| for l in lines -> l[unindentSize..] |]
+            lines <- lines |> Array.map (fun l -> if l.Length > unindentSize then l[unindentSize..] else "")
         if lines[lines.Length-1].EndsWith('|') then
             lines[lines.Length-1] <- lines[lines.Length-1] + "\n"
         lines |> String.concat "\n"
@@ -109,7 +108,7 @@ module Prompt =
     let toMsg = function
         | System s -> { role = Role.system; content = cleanContent s }
         | User s -> { role = Role.user; content = cleanContent s }
-        | Assistant s -> { role = Role.assistant; content = s }
+        | Assistant s -> { role = Role.assistant; content = cleanContent s }
         | x -> failwithf "%A is not a message" x
     let ofMsg = function
         | { role=Role.system; content=s } -> System s
@@ -163,6 +162,7 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
             temperature = _temperature
             max_completion_tokens = _max_tokens
             response_format = _responseFormat
+            think = None // TODO: make this configurable
         }
         let cacheKey = { url=gptModel.baseUrl; tag=None; completion=completionRq }
         let! resp = task {

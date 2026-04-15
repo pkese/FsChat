@@ -83,14 +83,12 @@ response.parseTableAs<EurovisionWinner[]>()
   ...
 |]
 ```
-Alternatively, if you didn't store the response into a variable, you can use `chat.parseTableAs<T>()`, which will parse the last response in the chat context.
-
 Notice:  
-1) Column names in the table and record field names don't need to match exactly:  
-    in the above example, table column `Song Title` is automatically mapped into `song` field of record.  
+1) Column names in the table and record field names don't need to match exactly (because LLMs tend not to follow orders exactly):  
+    In the above example, table column `| Song Title |` is automatically mapped into `.song` field of record.  
     The parser uses Levenshtein edit distance to find the closest match.
-2) Cell values `N/A`, `N / A`, `/`, `-`, `--` are automatically mapped to `None` in the record.  
-    It is suggested to explicitely instruct LLM to write one of these values for missing data in the table.
+2) Cell values `N/A`, `N / A`, `/`, `-`, `--` are automatically mapped to `None` in the record (if field is an option).  
+    It is suggested to explicitely instruct LLM to write one of the above values for missing data in the table.
 
 ### Mermaid charts
 
@@ -114,7 +112,7 @@ chat.send [
         Make sure each country appears exactly once in the graph:
         if a country won the competition multiple times, then the country's node should have multiple incoming and outgoing edges.
     """
-    Temperature 0.0  // set LLM temperature to 0.0 to avoid hallucinations
+    Temperature 0.0  // set LLM temperature to 0.0 to avoid hallucination
     Seed 42          // set a fixed random seed to make responses reproducible
     MaxTokens 5000   // limit number of output tokens
 ]
@@ -179,7 +177,7 @@ The result of `chat.send` is a `Response` record with:
 ### Multi-agent example
 
 Below is an example of instatiating 2 chat agents  
-and making them playin the *'20 questions game'* against one another  
+and making them play the *'20 questions game'* against one another  
 by accessing `response.text`.
 
 ```fsharp
@@ -223,7 +221,8 @@ play 20 "Which word is it? Ask the first question."
 The above animation contains some fancy HTML/CSS formatting. Look at [dialog.ipynb](docs/dialog.ipynb) for more details and read about how to customize live output rendering below.  
 Note: *unfortunately, GitHub's .ipynb renderer won't show colored bubbles: they are there but GitHub doesn't show them.*
 
-## Choosing what kind of output do you want to see
+## Fancy colorful outputs in Notebooks
+### Choosing what kind of output do you want to see
 
 There is an interface called `IChatRenderer` with three implementations:
 - `StdoutRenderer()` is the default for **FsChat** and renders live outputs to console.
@@ -313,7 +312,7 @@ For fiddling with Dotnet Interactive (Polyglot) notebooks:
 > Figure out how to [checkout the code](https://github.com/pkese/FsChat) and
 `#load "src/FsChat/FsChat.Chat.fsx"`
 into the notebook context.  
-> Currently the FsChat from Nuget gets registered as default FsChat library and Chat class.
+> Currently FsChat (the one from Nuget) gets registered as default FsChat library and Chat class.
 
 
 # TODO
@@ -321,17 +320,22 @@ into the notebook context.
   - [x] simplify customization
 - [x] record examples
 - [x] add README
-- [ ] Fix Jupyter-notebook renderin of cached responses
+- [ ] Report missing/unconfigured API_KEYs
+- [ ] Fix Jupyter-notebook rendering of cached responses
+- [ ] document and improve `Prompt.ResponseFormat`
 - [ ] Add cache tags to sqlite records
+- [ ] Add cache usage statistics
 - [ ] extract code snippets from markdown frames
 - [ ] parametize `parseTableAs` table cell values that map to `None`
   - [ ] add some form of a `startsWithN/A` option (or regex)
+- [ ] dedent prompts
+- [ ] render DOT charts
 - [ ] make Mermaid dark-mode friendly
 - [ ] improve Mermaid diagram sizes
 - [x] add API token limit
 - [x] parse tables
 - [ ] parse Json
-- [ ] render Json schemas from types
+- [ ] render Json schemas from types (waiting for .net 9.0)
 - [ ] add `prompt` notebook kernel
 - [ ] Add C# support
 - [ ] Write tests
