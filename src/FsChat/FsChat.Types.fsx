@@ -14,6 +14,7 @@ type ApiProvider =
     | Groq
     | Lepton
     | Ollama
+    | VLLM
 
 
 /// unique identifier for a model
@@ -34,6 +35,18 @@ type GptModel = {
 
 [<AutoOpen>]
 module ApiProviders =
+
+    module VLLM =
+        let mkApi modelId modelName =
+            {
+                authToken = fun () -> Environment.GetEnvironmentVariable "VLLM_API_KEY"
+                baseUrl = $"https://vllm-rig.kese.net/v1"
+                id = modelId
+                name = modelName
+                provider = VLLM
+            }
+        let qwen35_122b = mkApi "qwen35-122b" "cyankiwi/Qwen3.5-122B-A10B-AWQ-4bit"
+
     module OpenAI =
         let mkApi modelId modelName =
             {

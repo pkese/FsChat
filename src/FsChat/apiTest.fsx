@@ -1,12 +1,14 @@
-#!/usr/bin/env -S dotnet fsi --langversion:preview
+#!/usr/bin/env -S dotnet fsi --
 
 #r "nuget: dotenv.net, 3.2.0"
-#load "FsChat.AiApi.fsx"
+//#load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.fsx"
+#load "FsChat.fsx"
 
 open System
 open FSharp.Control
 open FsChat.AiApi
 open FsChat.Types
+open FsChat
 open dotenv.net
 
 do // load .env file
@@ -17,7 +19,8 @@ do // load .env file
 
 let selectedModel =
     //None
-    Some TogetherAI.llama31_8b
+    //Some TogetherAI.llama31_8b
+    Some VLLM.qwen35_122b
 
 let testStream() =
     taskSeq {
@@ -40,7 +43,7 @@ let testStream() =
         ]
         *)
 
-        let chunks = fetchStreaming (prompt, selectedModel)
+        let chunks = fetchStreaming (prompt |> Seq.map Prompt.toMsg, selectedModel)
         for chunk in chunks do
             match chunk with
             | Role role -> yield sprintf "\nRole: %s\n" role

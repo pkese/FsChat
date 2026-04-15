@@ -1,5 +1,5 @@
 #if INTERACTIVE
-#r "nuget: FSharp.Formatting, 22.0.0"
+#r "nuget: FSharp.Formatting, 21.0.0"
 #load "FsChat.TableReader.fsx"
 #else
 module FsChat.Markdown

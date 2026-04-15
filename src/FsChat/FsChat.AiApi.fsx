@@ -171,6 +171,10 @@ let fetchStreamingCompletion =
                     let text =
                         chunk.choices
                         |> Seq.choose _.delta
+                        |> Seq.map (fun delta ->
+                            delta.reasoning |> Option.iter (printf "%s")
+                            delta
+                        )
                         |> Seq.choose _.content
                         |> Seq.map (fun s -> tokenCtr <- tokenCtr + 1; s)
                         |> String.concat ""
@@ -234,7 +238,8 @@ let fetchStreaming (messages: Msg seq, model: GptModel option) =
         n = 1 // stream one token at a time
         //stream_options = {| include_usage = true |}
         temperature = Some 0.0 // 0.0-1.0
-        max_completion_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+        //max_completion_tokens = Some 4096 // Lepton defaults to 256, Gpt4o is limited to 4096
+        max_completion_tokens = None
         response_format = None
         think = None
     }

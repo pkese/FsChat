@@ -6,7 +6,8 @@ module FsChat.TableReader
 
 open System
 open FSharp.Reflection
-open TypeShape.Core
+open TypeShape.Core.Core
+
 
 type FldName = string
 type ColName = string
@@ -26,7 +27,7 @@ type ColName = string
     To match the table columns to the record fields, we use 'edit distance'.
 
 *)
-    
+
 type TableData = {
     headers: ColName list
     rows: string list list

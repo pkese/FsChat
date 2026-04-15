@@ -1,8 +1,8 @@
 #if INTERACTIVE
-#r "nuget: TypeShape, 10.0.0"
+//#r "nuget: TypeShape, 10.0.0"
 //#r "nuget: System.Text.Json, 9.0.0-rc.2.24473.5"
-#r "nuget: FSharp.SystemTextJson, 1.3.13"
-#load "FsChat.Types.fsx" "FsChat.AiApi.fsx" "FsChat.Markdown.fsx"
+//#r "nuget: FSharp.SystemTextJson, 1.3.13"
+#load "FsChat.Types.fsx" "FsChat.Markdown.fsx" "FsChat.AiApi.fsx"
 #else
 namespace FsChat
 #endif
@@ -314,28 +314,32 @@ type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUse
 
 
 (*
-//let chat = Chat(Gpt4o)
-#load "chat.fsx"
-open Chat
-open Shared.Gpt
-let chat = Chat(Gpt4o_mini)
-//let chat = Chat(LLama31_70b)
-chat.send [
-    System """
-        You're a helpful assistant.
-        You respond in Markdown (or Markdown code blocks) unless instructed otherwise.
-        Depending on content, render responses as Markdown tables where applicable.
-        Skip politeness phrases or excuses at the beginning of responses. Start directly with the main content.
-    """
-    User """
-        Who were the winners in recent 12 years of `Eurovision` contest?
-        Render any named entity that is appearing on `Wikipedia` in italic.
-        Mark any year when the contest wasn't held with "N/A" + reason.
+// this needs dotEnv to be loaded first to populate environment variables
+#if INTERACTIVE
+let testMe () =
 
-        Start response with a short title,
-        Add a single line of explanation e.g. tell who was the most recent winner.
-        then render a Markdown table consisting of following columns:
-        | Year | Country | Artist | Song title |
-    """
-];;
+    let chat = Chat VLLM.qwen35_122b
+    //let chat = Chat(LLama31_70b)
+    chat.send [
+        System """
+            You're a helpful assistant.
+            You respond in Markdown (or Markdown code blocks) unless instructed otherwise.
+            Depending on content, render responses as Markdown tables where applicable.
+            Skip politeness phrases or excuses at the beginning of responses. Start directly with the main content.
+        """
+        User """
+            Who were the winners in recent 12 years of `Eurovision` contest?
+            Render any named entity that is appearing on `Wikipedia` in italic.
+            Mark any year when the contest wasn't held with "N/A" + reason.
+
+            Start response with a short title,
+            Add a single line of explanation e.g. tell who was the most recent winner.
+            then render a Markdown table consisting of following columns:
+            | Year | Country | Artist | Song title |
+        """
+    ];;
+
+if fsi.CommandLineArgs.[0].EndsWith __SOURCE_FILE__ then
+    testMe()
+#endif
 *)
