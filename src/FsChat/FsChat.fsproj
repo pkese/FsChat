@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -32,24 +32,14 @@
     <!--Compile Include="FsChat.CompExpr.fsx" /-->
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.*" />
-    <!--PackageReference Include="System.Text.Json" Version="[9.0.0-rc.2.24473.5, 9.0.0)" /-->
-    <!--PackageReference Include="FSharp.Formatting" Version="20.0.1" /-->
+    <PackageReference Include="FSharp.Control.TaskSeq" Version="1.0.*" />
+    <PackageReference Update="FSharp.Core" Version="10.1.201" />
+    <PackageReference Include="FSharp.Formatting" Version="22.0.0" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.*" />
-    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+    <PackageReference Include="System.IO.Hashing" Version="10.0.6" />
     <PackageReference Include="TypeShape" Version="10.0.0" />
-    <PackageReference Include="Dapper.FSharp" Version="4.9.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Common\FSharp.Formatting.Common.fsproj">
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-      <IncludeAssets>FSharp.Formatting.Common.dll</IncludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\..\submodules\FSharp.Formatting\src\FSharp.Formatting.Markdown\FSharp.Formatting.Markdown.fsproj">
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-      <IncludeAssets>FSharp.Formatting.Markdown.dll</IncludeAssets>
-    </ProjectReference>
+    <PackageReference Include="Dapper.FSharp" Version="4.10.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.6" />
   </ItemGroup>
   <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
     <ItemGroup>

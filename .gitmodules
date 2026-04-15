@@ -1,3 +1,0 @@
-[submodule "submodules/FSharp.Formatting"]
-	path = submodules/FSharp.Formatting
-	url = git@github.com:pkese/FSharp.Formatting.git
