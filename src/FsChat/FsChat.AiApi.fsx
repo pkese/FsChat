@@ -99,6 +99,26 @@ type ChatCompletionChunk = {
     |} option
 }
 
+let prepareRequestJson streaming (completion: CompletionRequest) =
+    let requestMsg = {|
+        completion with
+            model = completion.model.id
+            messages = completion.messages
+            stream = streaming
+            n = 1
+            //reasoning = {|effort="low"|}
+            cache_salt = "123" // vLLM caching - https://github.com/vllm-project/vllm/blob/main/docs/design/prefix_caching.md
+            // Qwen's thinking is specified via `chat_template_kwargs` instead of `reasoning`
+            chat_template_kwargs =
+                if completion.model.id.Contains("qwen", StringComparison.OrdinalIgnoreCase) then
+                    match completion.think with
+                    | Some thinking -> Some {| enable_thinking = thinking |}
+                    | None -> Some {| enable_thinking = false |}
+                else None
+    |}
+    requestMsg
+
+
 let fetchStreamingCompletion =
 
     let client = new HttpClient()
@@ -116,15 +136,7 @@ let fetchStreamingCompletion =
                     model.baseUrl + "/chat/completions"
             use request = new HttpRequestMessage(HttpMethod.Post, url)
             request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", model.authToken())
-            let requestMsg = {|
-                completion with
-                    model = model.id
-                    messages = completion.messages
-                    stream = true
-                    n = 1
-                    //reasoning = {|effort="low"|}
-                    cache_salt = "123" // vLLM caching - https://github.com/vllm-project/vllm/blob/main/docs/design/prefix_caching.md
-            |}
+            let requestMsg = prepareRequestJson true completion
             use content = Json.JsonContent.Create(requestMsg, options=Json.options)
             request.Content <- content
             request.Options.Set(new HttpRequestOptionsKey<bool>("stream"), true)
@@ -171,7 +183,8 @@ let fetchStreamingCompletion =
                     let text =
                         chunk.choices
                         |> Seq.choose _.delta
-                        |> Seq.map (fun delta ->
+                        |> Seq.map (fun delta -> // print reasoning tokens
+                            // todo: we neet to move this to proper types
                             delta.reasoning |> Option.iter (printf "%s")
                             delta
                         )

@@ -9,7 +9,6 @@ open FSharp.Formatting.Markdown
 open FSharp.Formatting.Common
 
 open FsChat.TableReader
-open FSharp.Formatting.Markdown
 
 /// Extract text from MarkdownParagraphs (e.g. table cells)
 /// Note: in cese of links and images, we return the URL instead of text
