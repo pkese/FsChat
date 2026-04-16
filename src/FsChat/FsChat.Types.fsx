@@ -147,7 +147,9 @@ type GptStats = {
     requestedModel: string
     actualModel: string
     fingerprint: string option
-    nTokens: int
+    promptTokens: int
+    completionTokens: int
+    totalTokens: int
     durationMs: int
 }
 

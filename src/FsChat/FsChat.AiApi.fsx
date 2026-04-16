@@ -62,7 +62,9 @@ type ChoiceContent = {
     role: string option
     reasoning: string option
     content: string option
-    tool_calls: {|index:string; id:string; ``type``:string; ``function``:{|name:string; arguments:string|}|} list option
+    /// note: tool_calls are also appearing in streaming form and need to be reconstructed
+    /// see `extract_reasoning_and_calls` in https://docs.vllm.ai/en/v0.18.2/examples/online_serving/openai_chat_completion_tool_calls_with_reasoning/
+    tool_calls: {|index:string; id:string; ``type``:string; ``function``:{|name:string option; arguments:string option|}|} list option
 }
 
 [<CLIMutable>]
@@ -72,6 +74,13 @@ type Choice = {
     message: ChoiceContent option // when not streaming
     //logprobs: obj
     finish_reason: string option
+}
+
+[<CLIMutable>]
+type UsageStats = {
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
 }
 
 [<CLIMutable>]
@@ -92,11 +101,7 @@ type ChatCompletionChunk = {
     /// (Together.ai & Lepton may not have it)
     system_fingerprint: string option
 
-    usage: {|
-        completion_tokens: int
-        prompt_tokens: int
-        total_tokens: int
-    |} option
+    usage: UsageStats option
 }
 
 let prepareRequestJson streaming (completion: CompletionRequest) =
@@ -115,6 +120,10 @@ let prepareRequestJson streaming (completion: CompletionRequest) =
                     | Some thinking -> Some {| enable_thinking = thinking |}
                     | None -> Some {| enable_thinking = false |}
                 else None
+            stream_options =
+                if streaming
+                then box {| include_usage = true |} // there's also `continuous_usage_stats`
+                else null
     |}
     requestMsg
 
@@ -138,6 +147,7 @@ let fetchStreamingCompletion =
             request.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", model.authToken())
             let requestMsg = prepareRequestJson true completion
             use content = Json.JsonContent.Create(requestMsg, options=Json.options)
+            //printfn "request content: %s" (JsonSerializer.Serialize(requestMsg, Json.options))
             request.Content <- content
             request.Options.Set(new HttpRequestOptionsKey<bool>("stream"), true)
             if false then // debug
@@ -151,7 +161,27 @@ let fetchStreamingCompletion =
             use reader = new IO.StreamReader(stream)
             let mutable tokenCtr = 0
             let mutable stats = None
-            let mutable finished = None
+            let mutable finishReason = None
+            let mutable lastReportedUsage = None // actual stats from upstream
+
+            let getUsageStats () =
+                match lastReportedUsage with
+                | Some usage ->
+                    { stats.Value with
+                        promptTokens = usage.prompt_tokens
+                        completionTokens = usage.completion_tokens
+                        totalTokens = usage.total_tokens
+                        durationMs = int (DateTime.UtcNow - startedTs).TotalMilliseconds
+                    }
+                | None ->
+                    { stats.Value with
+                        completionTokens = tokenCtr
+                        totalTokens = stats.Value.promptTokens + tokenCtr
+                        durationMs = int (DateTime.UtcNow - startedTs).TotalMilliseconds
+                    }
+                |> fun s -> printfn "getUsageStats: %A" s; s
+
+
             while not reader.EndOfStream do //&& not finished do
                 let! line = reader.ReadLineAsync()
                 //printfn "> %s" line
@@ -168,7 +198,9 @@ let fetchStreamingCompletion =
                             requestedModel = model.id
                             actualModel = chunk.model
                             fingerprint = chunk.system_fingerprint
-                            nTokens = 0
+                            promptTokens = 0
+                            completionTokens = 0
+                            totalTokens = 0
                             durationMs = 0
                         }
 
@@ -185,22 +217,36 @@ let fetchStreamingCompletion =
                         |> Seq.choose _.delta
                         |> Seq.map (fun delta -> // print reasoning tokens
                             // todo: we neet to move this to proper types
+                            if delta.reasoning <> None || delta.tool_calls <> None || delta.content <> None then
+                                tokenCtr <- tokenCtr + 1
                             delta.reasoning |> Option.iter (printf "%s")
+                            if delta.tool_calls <> None then
+                                failwith "Tool calls in streaming output are not supported yet"
                             delta
                         )
                         |> Seq.choose _.content
-                        |> Seq.map (fun s -> tokenCtr <- tokenCtr + 1; s)
+                        //|> Seq.map (fun s -> tokenCtr <- tokenCtr + 1; s)
                         |> String.concat ""
                     if text.Length > 0 then
                         //printf "%s" text; do! Console.Out.FlushAsync()
                         yield Chunk text
 
+                    // keep last known usage
+                    match chunk.usage with
+                    | Some usage ->
+                        lastReportedUsage <- Some usage
+                        if usage.completion_tokens > 0 then
+                            tokenCtr <- usage.completion_tokens
+                        printfn "\nUsage update: prompt %d, completion %d, total %d tokens"
+                            usage.prompt_tokens usage.completion_tokens usage.total_tokens
+                    | None -> ()
+
                     // check if finished
-                    let finishReason =
+                    let decodedFinishReason =
                         chunk.choices
                         |> Seq.choose _.finish_reason
                         |> Seq.tryHead
-                    match finishReason with
+                    match decodedFinishReason with
                     | Some null -> ()
                     | Some reason ->
                         let reason =
@@ -212,29 +258,18 @@ let fetchStreamingCompletion =
                             | "content_filter" -> FinishReason.ContentFilter
                             | "tool_calls" -> FinishReason.ToolCalls
                             | s -> FinishReason.Other s
-                        let stats' = {
-                            stats.Value with
-                                nTokens = tokenCtr
-                                durationMs = int (DateTime.UtcNow - startedTs).TotalMilliseconds
-                        }
-                        finished <- Some (Finished (reason, stats'))
+                        finishReason <- Some reason
                     // Lepton on streaming requests omits finishReason, but sets usage
                     | None when chunk.usage <> None && model.provider = ApiProvider.Lepton ->
-                        let usage = chunk.usage.Value
-                        let stats' = {
-                            stats.Value with
-                                nTokens = usage.total_tokens
-                                durationMs = int (DateTime.UtcNow - startedTs).TotalMilliseconds
-                        }
-                        finished <- Some (Finished (FinishReason.Stop, stats'))
+                        finishReason <- Some FinishReason.Stop
                     | None -> ()
                 elif line = "" then ()
                 elif line = "data: [DONE]" then ()
                 else
                     yield Err $"Unexpected {model.provider} - {model.id} streaming result: `{line}`"
 
-            match finished with
-            | Some f -> yield f
+            match finishReason with
+            | Some reason -> yield Finished (reason, getUsageStats ())
             | None -> yield Err "Stream ended without completion"
         with
         | ex -> yield Err (sprintf "Exception: %s" ex.Message)

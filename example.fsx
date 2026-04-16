@@ -3,7 +3,8 @@
 #r "nuget: dotenv.net, 3.2.0"
 // #load "src/FsChat/FsChat.fsx"
 #i "nuget: /home/peter/work/FsChat/nuget.local"
-#r "nuget: FsChat, 0.2.0-beta1"
+//#r "nuget: FsChat, 0.2.0-beta1"
+#load "src/FsChat/FsChat.Types.fsx" "src/FsChat/FsChat.Markdown.fsx" "src/FsChat/FsChat.TableReader.fsx" "src/FsChat/FsChat.AiApi.fsx" "src/FsChat/FsChat.fsx"
 
 open dotenv.net
 open FsChat
@@ -13,7 +14,9 @@ DotEnv.Load(DotEnvOptions(envFilePaths=[".env"]))
 
 //Chat.defaultCacheProvider <- fun () -> None
 
-let chat = Chat(OpenAI.gpt4o_mini)
+let chat =
+    //Chat(OpenAI.gpt4o_mini)
+    Chat(VLLM.qwen35_122b)
 
 let resp = chat.send [
     User """
@@ -42,11 +45,11 @@ type Eurovision = {
     // We find closest string using Levenshtein edit distance.
 }
 
-printfn "Response: %A" resp
+//printfn "Response: %A" resp
 
 resp.ParseTableAs<Eurovision[]>()
 |> printfn "%A"
 
-//printfn "\nResult: %A" resp.result
+printfn "\nResult: %A" resp.result
 
 

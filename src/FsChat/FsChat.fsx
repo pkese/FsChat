@@ -30,7 +30,7 @@ module Renderers =
             | Role role -> sprintf "\nRole: %s\n" role
             | Preamble text
             | Chunk text -> text
-            | Finished (reason, stats) -> sprintf "\n\nFinished in %.2fs: `%A` @ %d tokens\n" (float stats.durationMs/1000.0) reason stats.nTokens
+            | Finished (reason, stats) -> sprintf "\n\nFinished in %.2fs: `%A` @ %d tokens\n" (float stats.durationMs/1000.0) reason stats.totalTokens
             | Err err -> sprintf "\nError: %s\n" err
 
         interface IChatRenderer with
