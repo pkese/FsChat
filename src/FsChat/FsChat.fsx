@@ -121,7 +121,7 @@ module Prompt =
 module Chat =
     /// <summary>Default renderer used by <see cref="Chat"/> instances</summary>
     /// <remarks>Can be replaced by setting <c>Chat.defaultRenderer <- NoRenderer()</c></remarks>
-    /// <remarks>`FsChat.Interactive` replaces this with <see cref="NotebookRenderer"/>NotebookRenderer</see></remarks>
+    /// <remarks>Can be replaced globally, e.g. with <c>Chat.defaultRenderer <- StdoutRenderer()</c> or <c>Chat.defaultRenderer <- NoRenderer()</c></remarks>
     let mutable defaultRenderer : IChatRenderer = StdoutRenderer()
     let mutable defaultCacheProvider : unit -> ICompletionCache option =
 #if INTERACTIVE
@@ -136,7 +136,7 @@ module Chat =
 
 /// <summary>Chat model</summary>
 /// <param name="model">GPT model to use</param>
-/// <param name="renderer">IChatRenderer to use (see <see cref="NotebookRenderer"/>NotebookRenderer</see>)</param>
+/// <param name="renderer">IChatRenderer to use, e.g. <see cref="StdoutRenderer"/>StdoutRenderer</see> or <see cref="NoRenderer"/>NoRenderer</see></param>
 /// <param name="prompt">Initial chat prompt context, e.g. <c>[ System "You're a helpful assistant" ]</c></param>
 /// <param name="apiUserName">User name to use for API calls</param>
 type Chat(?model:GptModel, ?renderer:IChatRenderer, ?prompt: Prompt seq, ?apiUserName:string) as this =

@@ -11,7 +11,7 @@
     <PackageId>FsChat</PackageId>
     <Authors>Peter Kese</Authors>
     <Company>JSI</Company>
-    <PackageDescription>FsChat: LLM chat with interactive output</PackageDescription>
+    <PackageDescription>FsChat: streaming LLM chat for F#</PackageDescription>
     <PackageTags>dotnet FsChat GPT AI chat</PackageTags>
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <RepositoryUrl>https://github.com/pkese/FsChat</RepositoryUrl>

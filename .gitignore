@@ -1,11 +1,7 @@
 .env*
 bin/
 obj/
-js-kernel/bundle.js
-node_modules/
 nuget.local/
 .fake
-
-notebooks/
 
 *.sqlite
