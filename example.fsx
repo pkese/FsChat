@@ -3,7 +3,7 @@
 #r "nuget: dotenv.net, 3.2.0"
 // #load "src/FsChat/FsChat.fsx"
 #i "nuget: /home/peter/work/FsChat/nuget.local"
-#r "nuget: FsChat, 0.1.0-beta2"
+#r "nuget: FsChat, 0.2.0-beta1"
 
 open dotenv.net
 open FsChat

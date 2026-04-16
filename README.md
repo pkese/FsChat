@@ -38,7 +38,7 @@ LEPTON_API_KEY=...
 ```fsharp
 #!/usr/bin/env -S dotnet fsi --langversion:preview
 
-#r "nuget: FsChat, 0.1.0-beta2"
+#r "nuget: FsChat, 0.2.0-beta1"
 #r "nuget: dotenv.net, 3.2.0"
 
 open dotenv.net
@@ -72,7 +72,7 @@ printfn "\n---\nFinal text:\n%s" response.text
 Add the package reference in your `.fsproj` or with the CLI:
 
 ```sh
-dotnet add package FsChat --version 0.1.0-beta2
+dotnet add package FsChat --version 0.2.0-beta1
 ```
 
 Then use it the same way as in the script example.
